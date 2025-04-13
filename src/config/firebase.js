@@ -2,6 +2,7 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, off, get } from 'firebase/database';
 import { getAnalytics } from "firebase/analytics";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import appConfig from './appConfig';
 
 // Get Firebase config using environment variables if available (for production)
@@ -24,6 +25,29 @@ const HOST_ID = import.meta.env.VITE_FIREBASE_HOST_ID || appConfig.firebase.host
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const analytics = getAnalytics(app);
+const auth = getAuth(app);
+
+// Authentication utilities
+export const signInAnonymousUser = async () => {
+  try {
+    const userCredential = await signInAnonymously(auth);
+    console.log("Anonymous authentication successful:", userCredential.user.uid);
+    return userCredential.user;
+  } catch (error) {
+    console.error("Anonymous authentication error:", error);
+    throw error;
+  }
+};
+
+// Check if user is already authenticated
+export const getCurrentUser = () => {
+  return new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe();
+      resolve(user);
+    }, reject);
+  });
+};
 
 // Game Constants from centralized config
 export const GAME_PHASES = appConfig.gameConstants.phases;
@@ -76,7 +100,7 @@ export const PATHS = {
   hostsList: 'hosts'
 };
 
-// Database utilities for read-only operations
+// Database utilities for read-only operations with authentication
 export const databaseUtils = {
   listenToPath: (path, callback) => {
     const reference = ref(database, path);
@@ -97,6 +121,12 @@ export const databaseUtils = {
 
   fetchData: async (path) => {
     try {
+      // Ensure user is authenticated before fetching data
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        await signInAnonymousUser();
+      }
+      
       const reference = ref(database, path);
       const snapshot = await get(reference);
       return snapshot.val();
@@ -122,61 +152,7 @@ export const databaseUtils = {
   }
 };
 
-// Game state utilities
-export const gameUtils = {
-  isGameActive: (gameData) => {
-    return gameData?.gameState?.status === GAME_STATUS.ACTIVE;
-  },
-
-  getPhaseText: (phase) => {
-    switch (phase) {
-      case GAME_PHASES.SETUP:
-        return appConfig.appText.phaseText.setup;
-      case GAME_PHASES.BOOKING:
-        return appConfig.appText.phaseText.booking;
-      case GAME_PHASES.PLAYING:
-        return appConfig.appText.phaseText.playing;
-      default:
-        return appConfig.appText.phaseText.noGame;
-    }
-  },
-
-  calculateGameProgress: (calledNumbers) => {
-    if (!calledNumbers || !Array.isArray(calledNumbers)) return 0;
-    return Math.round((calledNumbers.length / 90) * 100);
-  },
-
-  isValidTicket: (ticket) => {
-    if (!ticket || !ticket.numbers) return false;
-    
-    // Check basic structure
-    if (!Array.isArray(ticket.numbers) || ticket.numbers.length !== 3) return false;
-    
-    // Check each row
-    return ticket.numbers.every(row => 
-      Array.isArray(row) && row.length === 9 && 
-      row.filter(num => num !== 0).length === 5
-    );
-  }
-};
-
-// Validation utilities
-export const validationUtils = {
-  isValidPhoneNumber: (phone) => {
-    const phoneRegex = /^\d{10}$/;
-    return phoneRegex.test(phone);
-  },
-
-  isValidGameId: (gameId) => {
-    return typeof gameId === 'string' && gameId.length > 0;
-  },
-
-  isValidHostId: (hostId) => {
-    return typeof hostId === 'string' && hostId.length > 0;
-  }
-};
-
 // For debugging purposes, log the current firebase configuration (without sensitive data)
 console.log('Firebase initialized with project:', firebaseConfig.projectId);
 
-export { app, database as db, analytics, HOST_ID };
+export { app, database as db, analytics, auth, HOST_ID };
