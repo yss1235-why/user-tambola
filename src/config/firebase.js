@@ -4,9 +4,21 @@ import { getDatabase, ref, onValue, off, get } from 'firebase/database';
 import { getAnalytics } from "firebase/analytics";
 import appConfig from './appConfig';
 
-// Get Firebase config and host ID from centralized config
-const firebaseConfig = appConfig.firebase;
-const HOST_ID = appConfig.firebase.hostId;
+// Get Firebase config using environment variables if available (for production)
+// or fallback to the provided configuration (for development)
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+};
+
+// Read host ID from environment variables or use the default from appConfig
+const HOST_ID = import.meta.env.VITE_FIREBASE_HOST_ID || appConfig.firebase.hostId;
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -163,5 +175,8 @@ export const validationUtils = {
     return typeof hostId === 'string' && hostId.length > 0;
   }
 };
+
+// For debugging purposes, log the current firebase configuration (without sensitive data)
+console.log('Firebase initialized with project:', firebaseConfig.projectId);
 
 export { app, database as db, analytics, HOST_ID };
