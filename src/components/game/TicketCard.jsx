@@ -11,16 +11,18 @@ const TicketCell = ({ number, isMarked }) => {
     flex
     items-center
     justify-center
-    text-sm
-    sm:text-base
+    text-xs
+    sm:text-sm
     font-medium
-    rounded
+    rounded-md
     ${number === 0 
       ? 'bg-gray-100'
       : isMarked 
-        ? 'bg-green-100 text-green-800 ring-1 ring-green-400'
+        ? 'bg-green-100 text-green-800 border border-green-300'
         : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'
     }
+    transition-colors
+    duration-150
   `;
 
   return (
@@ -45,7 +47,6 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
         // Correct path to host phone number in currentGame settings
         if (currentGame?.settings?.hostPhone) {
           setHostPhone(currentGame.settings.hostPhone);
-          console.log("Host phone found in currentGame settings:", currentGame.settings.hostPhone);
         } else {
           // Fallback to direct fetch if not available in context
           const hostPhoneRef = ref(db, `hosts/${HOST_ID}/currentGame/settings/hostPhone`);
@@ -54,9 +55,6 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
           
           if (phoneNumber) {
             setHostPhone(phoneNumber);
-            console.log("Host phone fetched from database:", phoneNumber);
-          } else {
-            console.log("No host phone number found");
           }
         }
       } catch (error) {
@@ -125,14 +123,14 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
   if (!ticket?.numbers) return null;
 
   return (
-    <div className="rounded-lg shadow-md bg-white overflow-hidden">
+    <div className="card animate-fade-in hover:shadow-md transition-shadow duration-300">
       {/* Header */}
-      <div className="bg-blue-600 px-4 py-3 relative">
+      <div className="bg-blue-600 px-3 py-2 relative">
         <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <span className="text-lg font-bold text-white">#{ticket.id}</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-white">#{ticket.id}</span>
             {playerName && (
-              <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded">
+              <span className="text-xs text-blue-100">
                 {playerName}
               </span>
             )}
@@ -167,7 +165,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
       </div>
 
       {/* Ticket Grid */}
-      <div className="p-3 bg-white">
+      <div className="p-2 bg-white">
         {ticket.numbers.map((row, rowIndex) => (
           <div key={rowIndex} className="grid grid-cols-9 gap-1 mb-1 last:mb-0">
             {row.map((num, colIndex) => (
@@ -183,12 +181,18 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
 
       {/* Progress Bar (Only in Playing Phase) */}
       {phase === 3 && (
-        <div className="px-3 py-2 bg-gray-50 border-t border-gray-100">
+        <div className="px-2 py-1 bg-gray-50 border-t border-gray-100">
           <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div 
               className="h-full bg-blue-500 transition-all duration-500"
               style={{ width: `${(ticketStats.matched / ticketStats.total) * 100}%` }}
             />
+          </div>
+          <div className="mt-1 flex justify-between">
+            <span className="text-xs text-gray-500">{ticketStats.matched}/{ticketStats.total}</span>
+            <span className="text-xs text-gray-500">
+              {Math.round((ticketStats.matched / ticketStats.total) * 100)}%
+            </span>
           </div>
         </div>
       )}
@@ -198,7 +202,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
         <button
           onClick={handleBookingClick}
           className="w-full py-2 bg-green-600 text-white hover:bg-green-700
-                   transition-colors text-sm font-medium"
+                   transition-colors text-sm font-medium rounded-b-xl"
         >
           Book via WhatsApp
         </button>
