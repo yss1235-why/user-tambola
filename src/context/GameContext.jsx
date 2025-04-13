@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, HOST_ID } from '../config/firebase';
 import appConfig from '../config/appConfig';
 import { ref, onValue, off } from 'firebase/database';
+import { normalizeGameData, normalizeTickets, normalizeCalledNumbers } from '../utils/firebaseAdapter';
 
 const GameContext = createContext();
 
@@ -31,16 +32,20 @@ export const GameProvider = ({ children }) => {
     const ticketsRef = ref(db, `${BASE_PATH}/activeTickets/tickets`);
 
     const handleGameUpdate = (snapshot) => {
-      const gameData = snapshot.val();
-      console.log('Game Data:', gameData);
+      const rawGameData = snapshot.val();
+      console.log('Raw Game Data:', rawGameData);
 
-      if (gameData) {
+      if (rawGameData) {
+        // Normalize the game data to ensure all expected fields exist
+        const gameData = normalizeGameData(rawGameData);
+        console.log('Normalized Game Data:', gameData);
+
         setGameState(prev => ({
           ...prev,
           loading: false,
           currentGame: gameData,
           phase: gameData.gameState?.phase || 1,
-          calledNumbers: gameData.numberSystem?.calledNumbers || [],
+          calledNumbers: normalizeCalledNumbers(gameData.numberSystem?.calledNumbers),
           lastCalledNumber: gameData.numberSystem?.currentNumber,
         }));
       } else {
@@ -56,35 +61,27 @@ export const GameProvider = ({ children }) => {
       const bookingsData = snapshot.val();
       console.log('Bookings Data:', bookingsData);
 
+      // Provide an empty array if bookings is null
+      const normalizedBookings = bookingsData || [];
+
       setGameState(prev => ({
         ...prev,
-        bookings: bookingsData || {}
+        bookings: normalizedBookings
       }));
     };
 
     const handleTicketsUpdate = (snapshot) => {
-      const ticketsData = snapshot.val();
-      console.log('Tickets Data:', ticketsData);
+      const rawTicketsData = snapshot.val();
+      console.log('Raw Tickets Data:', rawTicketsData);
 
-      if (Array.isArray(ticketsData)) {
-        // Ensure we have valid tickets with proper structure
-        const validTickets = ticketsData.filter(ticket => 
-          ticket && ticket.id && Array.isArray(ticket.numbers)
-        );
-        
-        console.log(`Found ${validTickets.length} valid tickets`);
-        
-        setGameState(prev => ({
-          ...prev,
-          tickets: validTickets,
-        }));
-      } else {
-        console.error('Tickets data is not an array:', ticketsData);
-        setGameState(prev => ({
-          ...prev,
-          tickets: [],
-        }));
-      }
+      // Normalize tickets (remove nulls, ensure proper format)
+      const normalizedTickets = normalizeTickets(rawTicketsData);
+      console.log('Normalized Tickets:', normalizedTickets);
+      
+      setGameState(prev => ({
+        ...prev,
+        tickets: normalizedTickets,
+      }));
     };
 
     // Set up listeners
@@ -99,10 +96,20 @@ export const GameProvider = ({ children }) => {
 
     onValue(bookingsRef, handleBookingsUpdate, (error) => {
       console.error('Error fetching bookings:', error);
+      // Still provide empty bookings array on error
+      setGameState(prev => ({
+        ...prev,
+        bookings: []
+      }));
     });
 
     onValue(ticketsRef, handleTicketsUpdate, (error) => {
       console.error('Error fetching tickets:', error);
+      // Still provide empty tickets array on error
+      setGameState(prev => ({
+        ...prev,
+        tickets: []
+      }));
     });
 
     // Clean up listeners
