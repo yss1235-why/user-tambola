@@ -4,6 +4,7 @@ import { ref, onValue, off } from 'firebase/database';
 import { db } from '../config/firebase';
 import { announceNumber } from '../utils/audio';
 import { validateTicket } from '../utils/ticketUtils';
+import { normalizeGameData, normalizeTickets, normalizeCalledNumbers } from '../utils/firebaseAdapter';
 
 const initialState = {
   gameData: {
@@ -73,17 +74,27 @@ const useGameStore = () => {
         }
 
         const activeGames = Object.entries(hostsData)
-          .filter(([_, hostData]) => 
-            hostData.currentGame?.gameState?.status === 'active' &&
-            hostData.status === 'active'
-          )
-          .map(([hostId, hostData]) => ({
-            hostId,
-            ...hostData.currentGame,
-          }));
+          .filter(([_, hostData]) => {
+            // Consider both 'active' and 'booking' as valid game statuses
+            const status = hostData.currentGame?.gameState?.status;
+            return (status === 'active' || status === 'booking') &&
+              hostData.status === 'active';
+          })
+          .map(([hostId, hostData]) => {
+            // Normalize the game data
+            const normalizedGame = normalizeGameData(hostData.currentGame);
+            return {
+              hostId,
+              ...normalizedGame,
+            };
+          });
 
-        const currentGame = activeGames[0] || null;
-        const newCalledNumbers = currentGame?.numberSystem?.calledNumbers || [];
+        // Get the first active game or null
+        const rawCurrentGame = activeGames[0] || null;
+        // Normalize called numbers array
+        const newCalledNumbers = normalizeCalledNumbers(
+          rawCurrentGame?.numberSystem?.calledNumbers
+        );
         const lastCalledNumber = newCalledNumbers[newCalledNumbers.length - 1];
 
         // Check for new number announcement
@@ -99,13 +110,13 @@ const useGameStore = () => {
             ...prev.gameData,
             loading: false,
             error: null,
-            currentGame,
+            currentGame: rawCurrentGame,
             activeGames,
             calledNumbers: newCalledNumbers,
             lastCalledNumber,
-            phase: currentGame?.gameState?.phase || 1,
-            winningPatterns: currentGame?.gameState?.winningPatterns || [],
-            prizePool: currentGame?.gameState?.prizePool || {},
+            phase: rawCurrentGame?.gameState?.phase || 1,
+            winningPatterns: rawCurrentGame?.gameState?.winningPatterns || [],
+            prizePool: rawCurrentGame?.gameState?.prizePool || {},
           }
         }));
 
@@ -135,7 +146,7 @@ const useGameStore = () => {
     });
 
     return () => off(hostsRef);
-  }, []);
+  }, [state.gameData.lastCalledNumber, state.userPreferences.soundEnabled]);
 
   // User preference actions
   const setUserPreference = useCallback((key, value) => {
