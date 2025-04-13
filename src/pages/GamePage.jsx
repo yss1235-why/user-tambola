@@ -27,12 +27,14 @@ const CountdownTimer = () => {
   }, []);
 
   return (
-    <div className="mb-6 bg-blue-50 rounded-lg p-6 text-center">
-      <h2 className="text-xl font-semibold text-blue-800 mb-2">Game Starting Soon</h2>
-      <div className="text-4xl font-bold text-blue-600">
-        {String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}
+    <div className="section card bg-blue-50 animate-fade-in shadow-sm">
+      <div className="p-6 text-center">
+        <h2 className="text-lg font-semibold text-blue-800 mb-2">Game Starting Soon</h2>
+        <div className="text-4xl font-bold text-blue-600">
+          {String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}
+        </div>
+        <p className="mt-2 text-sm text-blue-600">Please wait while the host prepares the game</p>
       </div>
-      <p className="mt-2 text-blue-600">Please wait while the host prepares the game</p>
     </div>
   );
 };
@@ -55,7 +57,7 @@ const ContactHostButton = ({ hostPhone }) => {
   return (
     <button
       onClick={handleContactHost}
-      className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-md transition-colors flex items-center justify-center"
+      className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm transition-colors flex items-center justify-center"
     >
       <svg 
         className="w-5 h-5 mr-2" 
@@ -87,6 +89,7 @@ const GamePage = () => {
     const [gameEnded, setGameEnded] = useState(false);
     const [previousGameData, setPreviousGameData] = useState(null);
     const [isLoadingPrevious, setIsLoadingPrevious] = useState(false);
+    const [activeTab, setActiveTab] = useState('board'); // 'board', 'tickets', 'search'
 
     // Fetch previous game data from gameHistory
     useEffect(() => {
@@ -197,7 +200,7 @@ const GamePage = () => {
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                    <p className="mt-4 text-gray-600">Loading game data...</p>
+                    <p className="mt-4 text-sm text-gray-600">Loading game data...</p>
                 </div>
             </div>
         );
@@ -205,13 +208,13 @@ const GamePage = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+                <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6 text-center">
                     <h2 className="text-xl font-semibold text-red-600 mb-4">Connection Error</h2>
-                    <p className="text-gray-600 mb-6">{error}</p>
+                    <p className="text-sm text-gray-600 mb-6">{error}</p>
                     <button
                         onClick={() => window.location.reload()}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                        className="btn-primary"
                     >
                         Retry Connection
                     </button>
@@ -223,172 +226,190 @@ const GamePage = () => {
     // Game has ended or no active game
     if (!currentGame || gameEnded) {
         return (
-            <div className="min-h-screen bg-gray-50 py-8 px-4">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">Tambola Game</h1>
-                        <p className="mt-2 text-gray-600">
-                            {gameEnded ? "Game has ended" : "Waiting for the next game to start"}
-                        </p>
-                    </div>
+            <div className="max-w-3xl mx-auto">
+                <div className="text-center mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Tambola Game</h1>
+                    <p className="text-sm text-gray-600">
+                        {gameEnded ? "Game has ended" : "Waiting for the next game to start"}
+                    </p>
+                </div>
 
-                    <div className="max-w-3xl mx-auto space-y-6">
-                        {/* Previous Winners Display */}
-                        {isLoadingPrevious ? (
-                            <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                                <p className="mt-2 text-gray-600">Loading previous winners...</p>
-                            </div>
-                        ) : (
-                            <WinnersDisplay 
-                                previousGameData={previousGameData} 
-                                currentGame={gameEnded ? currentGame : null}
-                                showPrevious={true} 
-                            />
-                        )}
-                        
-                        {/* Contact Host Section */}
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                                Want to join the next game?
-                            </h2>
-                            <p className="text-gray-600 mb-6">
-                                Contact the host to get information about upcoming games and how to participate.
-                            </p>
-                            <ContactHostButton hostPhone={getHostPhone()} />
+                <div className="space-y-4">
+                    {/* Previous Winners Display */}
+                    {isLoadingPrevious ? (
+                        <div className="card p-4 text-center animate-fade-in">
+                            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                            <p className="mt-2 text-sm text-gray-600">Loading previous winners...</p>
                         </div>
+                    ) : (
+                        <WinnersDisplay 
+                            previousGameData={previousGameData} 
+                            currentGame={gameEnded ? currentGame : null}
+                            showPrevious={true} 
+                        />
+                    )}
+                    
+                    {/* Contact Host Section */}
+                    <div className="card p-6 shadow-sm animate-fade-in">
+                        <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                            Want to join the next game?
+                        </h2>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Contact the host to get information about upcoming games and how to participate.
+                        </p>
+                        <ContactHostButton hostPhone={getHostPhone()} />
                     </div>
                 </div>
             </div>
         );
     }
 
+    // For active games - phase 1, 2, or 3
     return (
-        <div className="min-h-screen bg-gray-50 py-6 px-4">
-            <div className="max-w-7xl mx-auto">
-                {/* Game Header */}
-                <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Tambola Game</h1>
-                    <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-100 text-blue-800">
-                        <span className="text-sm font-medium">
-                            {phase === 1 && "Game Setup in Progress"}
-                            {phase === 2 && "Ticket Booking Open"}
-                            {phase === 3 && "Game in Progress"}
-                        </span>
+        <div className="max-w-3xl mx-auto">
+            {/* Game Header */}
+            <header className="text-center mb-4">
+                <h1 className="text-xl font-bold text-gray-900 mb-1">Tambola Game</h1>
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium 
+                    ${phase === 1 ? 'bg-yellow-100 text-yellow-800' : 
+                      phase === 2 ? 'bg-blue-100 text-blue-800' : 
+                      'bg-green-100 text-green-800'}`}>
+                    <span>
+                        {phase === 1 && "Game Setup in Progress"}
+                        {phase === 2 && "Ticket Booking Open"}
+                        {phase === 3 && "Game in Progress"}
+                    </span>
+                </div>
+            </header>
+
+            {/* Game Content */}
+            {/* Phase 1: Setup Phase - Countdown Timer */}
+            {phase === 1 && (
+                <>
+                    <CountdownTimer />
+                    
+                    {/* Previous Winners from last game */}
+                    {isLoadingPrevious ? (
+                        <div className="card p-4 text-center animate-fade-in">
+                            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                            <p className="mt-2 text-sm text-gray-600">Loading previous winners...</p>
+                        </div>
+                    ) : (
+                        <WinnersDisplay previousGameData={previousGameData} showPrevious={true} />
+                    )}
+                </>
+            )}
+
+            {/* Phase 3: Playing Phase Content */}
+            {phase === 3 && (
+                <>
+                    {/* Mobile Tab Navigation */}
+                    <div className="flex border-b border-gray-200 mb-4 overflow-x-auto hide-scrollbar">
+                        <button 
+                            className={`px-4 py-2 text-sm font-medium ${activeTab === 'board' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600'}`}
+                            onClick={() => setActiveTab('board')}
+                        >
+                            Game Board
+                        </button>
+                        <button 
+                            className={`px-4 py-2 text-sm font-medium ${activeTab === 'winners' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600'}`}
+                            onClick={() => setActiveTab('winners')}
+                        >
+                            Winners
+                        </button>
+                        <button 
+                            className={`px-4 py-2 text-sm font-medium ${activeTab === 'search' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600'}`}
+                            onClick={() => setActiveTab('search')}
+                        >
+                            Search Tickets
+                        </button>
                     </div>
-                </header>
 
-                {/* Game Content */}
-                <div className="space-y-6">
-                    {/* Phase 1: Setup Phase - Countdown Timer */}
-                    {phase === 1 && (
-                        <>
-                            <CountdownTimer />
+                    {/* Content based on active tab */}
+                    {activeTab === 'board' && (
+                        <div className="space-y-4 animate-fade-in">
+                            {/* Current Number Display */}
+                            <NumberDisplay />
                             
-                            {/* Previous Winners from last game */}
-                            {isLoadingPrevious ? (
-                                <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                                    <p className="mt-2 text-gray-600">Loading previous winners...</p>
-                                </div>
-                            ) : (
-                                <WinnersDisplay previousGameData={previousGameData} showPrevious={true} />
-                            )}
-                        </>
+                            {/* Number Board */}
+                            <NumberBoard />
+                        </div>
                     )}
 
-                    {/* Phase 3: Playing Phase Content */}
-                    {phase === 3 && (
-                        <>
-                            {/* Number Display Section */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                                {/* Current Number Display */}
-                                <div className="lg:col-span-1">
-                                    <NumberDisplay />
-                                </div>
-                                
-                                {/* Number Board */}
-                                <div className="lg:col-span-2">
-                                    <NumberBoard />
-                                </div>
-                            </div>
-                            
-                            {/* Winners Display */}
-                            <div className="mb-6">
-                                <WinnersDisplay />
-                            </div>
-                            
-                            {/* Ticket Search - Using the comprehensive TicketSearch component */}
-                            <div className="mb-6">
-                                <TicketSearch />
-                            </div>
-
-                            {/* Winners Notification Overlay */}
-                            <WinnersNotification />
-                        </>
+                    {activeTab === 'winners' && (
+                        <div className="animate-fade-in">
+                            <WinnersDisplay />
+                        </div>
                     )}
 
-                    {/* Tickets Section - Only for Booking Phase (Phase 2) */}
-                    {phase === 2 && (
-                        <div id="tickets-section" className="space-y-4">
-                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-                                <h2 className="text-xl font-semibold text-gray-900">
-                                    Available Tickets ({filteredTickets.length})
-                                </h2>
-                                
-                                {/* Quick filter input */}
-                                <div className="relative w-full sm:w-72">
-                                    <input
-                                        type="text"
-                                        placeholder="Quick filter by ID or name..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg
-                                            focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                                            placeholder-gray-400 transition-colors"
-                                    />
-                                    {searchTerm && (
-                                        <button
-                                            onClick={() => setSearchTerm('')}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2
-                                                text-gray-400 hover:text-gray-600"
-                                        >
-                                            <svg 
-                                                className="h-5 w-5" 
-                                                fill="none" 
-                                                viewBox="0 0 24 24" 
-                                                stroke="currentColor"
-                                            >
-                                                <path 
-                                                    strokeLinecap="round" 
-                                                    strokeLinejoin="round" 
-                                                    strokeWidth={2} 
-                                                    d="M6 18L18 6M6 6l12 12" 
-                                                />
-                                            </svg>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            {/* Tickets Grid for Booking Phase */}
-                            {filteredTickets.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {filteredTickets.map((ticket) => (
-                                        <TicketCard key={ticket.id} ticket={ticket} />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                                    <p className="text-gray-600">
-                                        {searchTerm ? "No tickets match your filter criteria." : "No tickets available at the moment."}
-                                    </p>
-                                </div>
+                    {activeTab === 'search' && (
+                        <div className="animate-fade-in">
+                            <TicketSearch />
+                        </div>
+                    )}
+
+                    {/* Winners Notification Overlay - Always visible regardless of tab */}
+                    <WinnersNotification />
+                </>
+            )}
+
+            {/* Tickets Section - Only for Booking Phase (Phase 2) */}
+            {phase === 2 && (
+                <div id="tickets-section" className="space-y-4 animate-fade-in">
+                    <div className="flex flex-col space-y-2">
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            Available Tickets ({filteredTickets.length})
+                        </h2>
+                        
+                        {/* Quick filter input */}
+                        <div className="relative w-full">
+                            <input
+                                type="text"
+                                placeholder="Quick filter by ID or name..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="input"
+                            />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2
+                                        text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg 
+                                        className="h-5 w-5" 
+                                        fill="none" 
+                                        viewBox="0 0 24 24" 
+                                        stroke="currentColor"
+                                    >
+                                        <path 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round" 
+                                            strokeWidth={2} 
+                                            d="M6 18L18 6M6 6l12 12" 
+                                        />
+                                    </svg>
+                                </button>
                             )}
+                        </div>
+                    </div>
+                    
+                    {/* Tickets Grid for Booking Phase */}
+                    {filteredTickets.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            {filteredTickets.map((ticket) => (
+                                <TicketCard key={ticket.id} ticket={ticket} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="card p-6 text-center">
+                            <p className="text-sm text-gray-600">
+                                {searchTerm ? "No tickets match your filter criteria." : "No tickets available at the moment."}
+                            </p>
                         </div>
                     )}
                 </div>
-            </div>
+            )}
         </div>
     );
 };
