@@ -1,16 +1,8 @@
 // src/config/appConfig.js
 const appConfig = {
-  // Firebase/Host Configuration
+  // Firebase/Host Configuration - Default values (will be overridden by environment variables)
   firebase: {
-    hostId: "SMRyGxVTVRcDOcvi9wtfO8rzkjf1", // Change this to use a different host ID
-    apiKey: "AIzaSyCH2WtQ2y3ln8ToHcapIsEMIXJ78Hsg7Bg",
-    authDomain: "tambola-74046.firebaseapp.com",
-    databaseURL: "https://tambola-74046-default-rtdb.firebaseio.com",
-    projectId: "tambola-74046",
-    storageBucket: "tambola-74046.firebasestorage.app",
-    messagingSenderId: "310265084192",
-    appId: "1:310265084192:web:c044bf9b83c444f4a2ff45",
-    measurementId: "G-MP72F136BH"
+    hostId: "SMRyGxVTVRcDOcvi9wtfO8rzkjf1", // Default host ID (override with VITE_FIREBASE_HOST_ID)
   },
   
   // Application Text Configuration
