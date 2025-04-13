@@ -7,9 +7,9 @@ const appConfig = {
   
   // Application Text Configuration
   appText: {
-    websiteTitle: "Tambola Game", // Website title (shows in browser tab)
-    appName: "Tambola", // App name (shown in header)
-    loadingText: "Loading Tambola Game...", // Loading screen text
+    websiteTitle: "Jo's & Nim's", // Website title (shows in browser tab)
+    appName: "Jo's & Nim's", // App name (shown in header)
+    loadingText: "Loading Jo's & Nim's Tambola Game...", // Loading screen text
     
     // Game phase text
     phaseText: {
