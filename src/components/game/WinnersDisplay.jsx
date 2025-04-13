@@ -82,37 +82,33 @@ const PrizeWinner = ({ prizeType, ticketId, playerName, isLatest, timestamp }) =
 
   return (
     <div className={`
-      p-4 
+      px-3 py-2 sm:px-4 sm:py-3
       ${isLatest ? 'bg-green-50' : 'hover:bg-gray-50'} 
       transition-colors duration-200
       border-b border-gray-100
       last:border-b-0
     `}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <span className="text-2xl" role="img" aria-label={prizeConfig.label}>
-            {prizeConfig.icon}
-          </span>
-          <div>
-            <h3 className="font-medium text-gray-900">{prizeConfig.label}</h3>
-            <p className="text-sm text-gray-500">{prizeConfig.description}</p>
+      <div className="flex items-center">
+        <span className="text-xl sm:text-2xl mr-3" role="img" aria-label={prizeConfig.label}>
+          {prizeConfig.icon}
+        </span>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-gray-900 text-sm">{prizeConfig.label}</h3>
+          <div className="flex flex-wrap justify-between items-baseline">
+            <p className="text-xs text-gray-500 truncate mr-1">{prizeConfig.description}</p>
+            <div className="text-xs text-right">
+              <span className="font-medium text-gray-900">#{ticketId}</span>
+              {playerName && <span className="ml-1 text-gray-700">{playerName}</span>}
+            </div>
           </div>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="font-medium text-gray-900">#{ticketId}</span>
-          <span className="text-sm text-gray-700 font-medium">{playerName || 'Unbooked Ticket'}</span>
-          {formattedTime && (
-            <span className="text-xs text-gray-500 mt-1">at {formattedTime}</span>
-          )}
-        </div>
-      </div>
-      {isLatest && (
-        <div className="mt-2 flex items-center justify-end">
-          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-            Latest Winner
+
+        {isLatest && (
+          <span className="ml-2 flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+            Latest
           </span>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
@@ -135,51 +131,51 @@ const SheetPrizeWinner = ({ prizeType, winningTickets, isLatest }) => {
 
   return (
     <div className={`
-      p-4 
+      px-3 py-2 sm:px-4 sm:py-3
       ${isLatest ? 'bg-green-50' : 'hover:bg-gray-50'} 
       transition-colors duration-200
       border-b border-gray-100
       last:border-b-0
     `}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-center space-x-3">
-          <span className="text-2xl" role="img" aria-label={prizeConfig.label}>
-            {prizeConfig.icon}
-          </span>
-          <div>
-            <h3 className="font-medium text-gray-900">{prizeConfig.label}</h3>
-            <p className="text-sm text-gray-500">{prizeConfig.description}</p>
-            {commonPlayerName && (
-              <p className="text-sm font-medium text-blue-600 mt-1">
-                Winner: {commonPlayerName}
-              </p>
+      <div className="flex items-start">
+        <span className="text-xl sm:text-2xl mr-3 flex-shrink-0" role="img" aria-label={prizeConfig.label}>
+          {prizeConfig.icon}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-center">
+            <h3 className="font-medium text-gray-900 text-sm">{prizeConfig.label}</h3>
+            {isLatest && (
+              <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                Latest
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mb-1">{prizeConfig.description}</p>
+          
+          {commonPlayerName && (
+            <p className="text-xs font-medium text-blue-600 mb-2">
+              Winner: {commonPlayerName}
+            </p>
+          )}
+
+          {/* Ticket list - concise for mobile */}
+          <div className="flex flex-wrap gap-1">
+            {winningTickets.slice(0, 6).map((ticket, index) => (
+              <span 
+                key={ticket.ticketId}
+                className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-800 rounded text-xs"
+              >
+                #{ticket.ticketId}
+              </span>
+            ))}
+            {winningTickets.length > 6 && (
+              <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                +{winningTickets.length - 6} more
+              </span>
             )}
           </div>
         </div>
       </div>
-
-      {/* Ticket list */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {winningTickets.map(ticket => (
-          <div 
-            key={ticket.ticketId}
-            className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-800 rounded text-sm"
-          >
-            #{ticket.ticketId}
-            {!commonPlayerName && ticket.playerName && (
-              <span className="ml-1 text-xs text-gray-600">({ticket.playerName})</span>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {isLatest && (
-        <div className="mt-2 flex items-center justify-end">
-          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-            Latest Winner
-          </span>
-        </div>
-      )}
     </div>
   );
 };
@@ -198,18 +194,18 @@ const RemainingPrizes = ({ wonPrizes, enabledPrizes }) => {
   if (remainingCount <= 0) return null;
 
   return (
-    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-      <h3 className="text-sm font-medium text-gray-700 mb-2">
+    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+      <h3 className="text-xs font-medium text-gray-700 mb-2">
         Remaining Prizes ({remainingCount})
       </h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-1 sm:gap-2">
         {remainingPrizes.map(([key, prize]) => (
           <div 
             key={key}
-            className="bg-white px-3 py-2 rounded border border-gray-200 flex items-center space-x-2"
+            className="bg-white px-2 py-1 rounded border border-gray-200 flex items-center"
           >
-            <span className="text-lg">{prize.icon}</span>
-            <span className="text-xs text-gray-600">{prize.label}</span>
+            <span className="text-lg mr-1">{prize.icon}</span>
+            <span className="text-xs text-gray-600 truncate">{prize.label}</span>
           </div>
         ))}
       </div>
@@ -222,6 +218,7 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
   const [latestWinner, setLatestWinner] = useState(null);
   const [processedWinners, setProcessedWinners] = useState([]);
   const [enabledPrizes, setEnabledPrizes] = useState([]);
+  const [expanded, setExpanded] = useState(false);
   
   // Sheet prizes to be consolidated
   const SHEET_PRIZES = ['halfSheet', 'fullSheet'];
@@ -403,17 +400,22 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
       previousGameData, currentGame, showPrevious, gameContext.phase, latestWinner]);
 
   const headerTitle = showPrevious ? 
-    "Previous Game Winners" : 
+    "Previous Winners" : 
     "Winners Board";
+
+  // Display fewer items on mobile unless expanded
+  const displayedWinners = expanded ? 
+    processedWinners : 
+    processedWinners.slice(0, 3);
 
   if (!processedWinners.length) {
     return (
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <h2 className="text-lg font-medium text-gray-900">{headerTitle}</h2>
+      <div className="card shadow-sm animate-fade-in">
+        <div className="px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-100 bg-gray-50">
+          <h2 className="text-base font-medium text-gray-900">{headerTitle}</h2>
         </div>
-        <div className="p-6 text-center">
-          <p className="text-gray-600">
+        <div className="p-4 text-center">
+          <p className="text-sm text-gray-600">
             {showPrevious 
               ? "No winners from previous game"
               : gameContext.phase === 3 
@@ -429,18 +431,18 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+    <div className="card shadow-sm animate-fade-in">
+      <div className="px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-100 bg-gray-50">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-medium text-gray-900">{headerTitle}</h2>
-          <span className="text-sm text-gray-600">
-            {processedWinners.length} {enabledPrizes.length > 0 ? `of ${enabledPrizes.length}` : ''} prizes won
+          <h2 className="text-base font-medium text-gray-900">{headerTitle}</h2>
+          <span className="text-xs text-gray-600">
+            {processedWinners.length} won
           </span>
         </div>
       </div>
 
       <div className="divide-y divide-gray-100">
-        {processedWinners.map((winner, index) => (
+        {displayedWinners.map((winner, index) => (
           winner.isSheet ? (
             <SheetPrizeWinner
               key={`${winner.prizeType}-${index}`}
@@ -460,6 +462,18 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
           )
         ))}
       </div>
+
+      {/* Show more/less toggle */}
+      {processedWinners.length > 3 && (
+        <div className="px-3 py-2 border-t border-gray-100 text-center">
+          <button 
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs text-blue-600 font-medium"
+          >
+            {expanded ? "Show less" : `Show all ${processedWinners.length} winners`}
+          </button>
+        </div>
+      )}
 
       {gameContext.phase === 3 && !showPrevious && processedWinners.length < enabledPrizes.length && (
         <RemainingPrizes 
