@@ -14,6 +14,20 @@ if ('speechSynthesis' in window) {
   speechSynthesis.cancel();
 }
 
+// Handle mobile viewport height issues
+const setVhProperty = () => {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+};
+
+// Set initial value and update on resize
+setVhProperty();
+window.addEventListener('resize', setVhProperty);
+
+// Add passive event listeners for better scroll performance on mobile
+document.addEventListener('touchstart', function() {}, { passive: true });
+document.addEventListener('touchmove', function() {}, { passive: true });
+
 // Set up browser notifications permission request
 const requestNotificationPermission = async () => {
   if ('Notification' in window) {
@@ -25,6 +39,19 @@ const requestNotificationPermission = async () => {
     }
   }
 };
+
+// Service Worker Registration for PWA support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(registration => {
+        console.log('Service Worker registered with scope:', registration.scope);
+      })
+      .catch(error => {
+        console.error('Service Worker registration failed:', error);
+      });
+  });
+}
 
 // Request permission when user interacts with the page
 document.addEventListener('click', () => {
@@ -44,12 +71,30 @@ styleElement.textContent = `
     to { opacity: 0; }
   }
   
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  
   .animate-fade-in-up {
     animation: fadeInUp 0.3s ease-out;
   }
   
   .winner-notification {
     animation: fadeInUp 0.3s ease-out, fadeOut 0.3s ease-in 4.7s forwards;
+  }
+  
+  /* Fix for mobile 100vh issue */
+  .mobile-height-fix {
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+  }
+  
+  /* Safari bottom bar spacing */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .safe-area-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
   }
 `;
 document.head.appendChild(styleElement);
