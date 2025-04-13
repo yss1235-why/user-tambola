@@ -1,6 +1,6 @@
 // src/context/GameContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db, HOST_ID } from '../config/firebase';
+import { db, HOST_ID, getCurrentUser, signInAnonymousUser } from '../config/firebase';
 import appConfig from '../config/appConfig';
 import { ref, onValue, off } from 'firebase/database';
 import { normalizeGameData, normalizeTickets, normalizeCalledNumbers } from '../utils/firebaseAdapter';
@@ -21,8 +21,35 @@ export const GameProvider = ({ children }) => {
     tickets: [],
     bookings: {},
   });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // First, ensure authentication
   useEffect(() => {
+    async function ensureAuthentication() {
+      try {
+        // Check if already authenticated
+        const currentUser = await getCurrentUser();
+        if (!currentUser) {
+          await signInAnonymousUser();
+        }
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error("Authentication error in GameContext:", error);
+        setGameState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Authentication failed. Please refresh the page.',
+        }));
+      }
+    }
+    
+    ensureAuthentication();
+  }, []);
+
+  // Set up Firebase listeners once authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return; // Don't proceed until authenticated
+    
     // Log the HOST_ID to verify environment variables are loaded
     console.log('Using Host ID:', HOST_ID);
     
@@ -90,7 +117,7 @@ export const GameProvider = ({ children }) => {
       setGameState(prev => ({
         ...prev,
         loading: false,
-        error: 'Failed to connect to game server',
+        error: 'Failed to connect to game server: ' + error.message,
       }));
     });
 
@@ -118,7 +145,7 @@ export const GameProvider = ({ children }) => {
       off(bookingsRef);
       off(ticketsRef);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   // Add test tickets if needed (for development/testing only)
   useEffect(() => {
