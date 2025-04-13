@@ -22,6 +22,9 @@ export const GameProvider = ({ children }) => {
   });
 
   useEffect(() => {
+    // Log the HOST_ID to verify environment variables are loaded
+    console.log('Using Host ID:', HOST_ID);
+    
     // References to game data, bookings, and tickets
     const gameRef = ref(db, BASE_PATH);
     const bookingsRef = ref(db, `${BASE_PATH}/activeTickets/bookings`);
@@ -112,8 +115,12 @@ export const GameProvider = ({ children }) => {
 
   // Add test tickets if needed (for development/testing only)
   useEffect(() => {
-    if (gameState.tickets.length === 0 && !gameState.loading) {
-      console.log('Adding test tickets');
+    // Check if we should add test tickets in development mode
+    const shouldAddTestTickets = import.meta.env.DEV && 
+                                import.meta.env.VITE_ADD_TEST_TICKETS === 'true';
+    
+    if (shouldAddTestTickets && gameState.tickets.length === 0 && !gameState.loading) {
+      console.log('Adding test tickets for development');
       const testTickets = Array(10).fill().map((_, i) => ({
         id: `test-${i+1}`,
         numbers: [
