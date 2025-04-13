@@ -1,7 +1,7 @@
 // src/components/game/TicketCard.jsx
 import React, { useMemo, useEffect, useState } from 'react';
 import { useGame } from '../../context/GameContext';
-import { db } from '../../config/firebase';
+import { db, HOST_ID } from '../../config/firebase';
 import { ref, get } from 'firebase/database';
 
 const TicketCell = ({ number, isMarked }) => {
@@ -35,7 +35,6 @@ const TicketCell = ({ number, isMarked }) => {
 const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
   const { isNumberCalled, phase, currentGame } = useGame();
   const [hostPhone, setHostPhone] = useState('');
-  const HOST_ID = 'Xa94GGCM9LOJF59EFA8jJLyjW2v2';
 
   // Only show remove button during playing phase when explicitly enabled
   const shouldShowRemoveButton = showRemoveButton && phase === 3;
