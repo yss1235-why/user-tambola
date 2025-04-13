@@ -1,0 +1,35 @@
+# netlify.toml - Configuration file for Netlify deployments
+
+[build]
+  # Directory to publish (relative to root of your repo)
+  publish = "dist"
+  
+  # Default build command
+  command = "npm run build"
+
+# Redirects configuration for React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for Progressive Web App
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Environment variable placeholder
+# Define actual environment variables in Netlify UI
+[context.production.environment]
+  # This is a placeholder to remind you to set these in Netlify dashboard
+  VITE_FIREBASE_HOST_ID = "SMRyGxVTVRcDOcvi9wtfO8rzkjf1"
