@@ -3,6 +3,7 @@ import React, { Suspense, useState, useEffect } from 'react';
 import { GameProvider } from './context/GameContext';
 import appConfig from './config/appConfig';
 import { diagnoseFirebaseConnection } from './utils/firebaseDebug';
+import { signInAnonymousUser, getCurrentUser } from './config/firebase';
 
 // Lazy load main components for better performance
 const AppRouter = React.lazy(() => import('./routes/AppRouter'));
@@ -149,15 +150,39 @@ const App = () => {
   // Add Firebase diagnostic state
   const [diagnosticResult, setDiagnosticResult] = useState(null);
   const [isDiagnosing, setIsDiagnosing] = useState(true);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [authError, setAuthError] = useState(null);
 
   // Set the document title on app initialization
   useEffect(() => {
     document.title = appConfig.appText.websiteTitle;
   }, []);
 
-  // Run Firebase diagnostics
+  // Initialize anonymous authentication
+  useEffect(() => {
+    async function initializeAuth() {
+      try {
+        // Check if already authenticated
+        const currentUser = await getCurrentUser();
+        if (!currentUser) {
+          await signInAnonymousUser();
+        }
+        setIsAuthenticating(false);
+      } catch (error) {
+        console.error("Authentication error:", error);
+        setAuthError(error.message);
+        setIsAuthenticating(false);
+      }
+    }
+    
+    initializeAuth();
+  }, []);
+
+  // Run Firebase diagnostics after authentication
   useEffect(() => {
     async function runDiagnostics() {
+      if (isAuthenticating) return; // Wait for authentication to complete
+      
       try {
         const result = await diagnoseFirebaseConnection();
         setDiagnosticResult(result);
@@ -171,14 +196,53 @@ const App = () => {
       }
     }
     
-    runDiagnostics();
-  }, []);
+    if (!isAuthenticating) {
+      runDiagnostics();
+    }
+  }, [isAuthenticating]);
 
   // Handle retry
   const handleRetryConnection = () => {
     setIsDiagnosing(true);
     window.location.reload();
   };
+
+  // Display authentication loading screen
+  if (isAuthenticating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <p className="mt-4 text-gray-600 text-lg">Initializing secure connection...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Display authentication error screen
+  if (authError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+              Authentication Error
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {authError}
+            </p>
+            <button
+              onClick={handleRetryConnection}
+              className="px-6 py-2 bg-blue-500 text-white rounded-md 
+                       hover:bg-blue-600 transition-colors duration-200"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Display diagnostic loading screen
   if (isDiagnosing) {
