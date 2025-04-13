@@ -1,11 +1,21 @@
 // src/utils/firebaseDebug.js
-import { db } from '../config/firebase';
+import { db, auth, HOST_ID, signInAnonymousUser, getCurrentUser } from '../config/firebase';
 import { ref, get } from 'firebase/database';
 
 export async function diagnoseFirebaseConnection() {
   console.log("Starting Firebase connection diagnosis...");
   
   try {
+    // First, ensure the user is authenticated
+    console.log("Authenticating anonymously...");
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      const user = await signInAnonymousUser();
+      console.log("Anonymous authentication completed. User ID:", user.uid);
+    } else {
+      console.log("Already authenticated. User ID:", currentUser.uid);
+    }
+    
     // Test 1: Check root connection
     console.log("Test 1: Checking root connection...");
     const rootRef = ref(db, '/');
@@ -31,27 +41,26 @@ export async function diagnoseFirebaseConnection() {
     console.log("Test 2 Passed: Hosts path exists");
     
     // Test 3: Check host ID
-    const hostId = import.meta.env.VITE_FIREBASE_HOST_ID;
-    console.log(`Test 3: Checking host ID (${hostId})...`);
+    console.log(`Test 3: Checking host ID (${HOST_ID})...`);
     
-    if (!hostId) {
+    if (!HOST_ID) {
       console.error("Test 3 Failed: Host ID environment variable is not set");
       return { success: false, error: "Host ID environment variable is not set" };
     }
     
-    const hostRef = ref(db, `hosts/${hostId}`);
+    const hostRef = ref(db, `hosts/${HOST_ID}`);
     const hostSnapshot = await get(hostRef);
     
     if (!hostSnapshot.exists()) {
-      console.error(`Test 3 Failed: Host ID '${hostId}' doesn't exist`);
-      return { success: false, error: `Host ID '${hostId}' doesn't exist` };
+      console.error(`Test 3 Failed: Host ID '${HOST_ID}' doesn't exist`);
+      return { success: false, error: `Host ID '${HOST_ID}' doesn't exist` };
     }
     
     console.log("Test 3 Passed: Host ID exists");
     
     // Test 4: Check currentGame path
     console.log("Test 4: Checking currentGame path...");
-    const gameRef = ref(db, `hosts/${hostId}/currentGame`);
+    const gameRef = ref(db, `hosts/${HOST_ID}/currentGame`);
     const gameSnapshot = await get(gameRef);
     
     if (!gameSnapshot.exists()) {
