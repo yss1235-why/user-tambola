@@ -135,17 +135,45 @@ export const calculateTicketStatus = (ticketNumbers, calledNumbers) => {
  * @returns {Object} Formatted ticket data for display
  */
 export const formatTicketForDisplay = (ticket, calledNumbers = []) => {
-  if (!ticket || !validateTicket(ticket).isValid) {
+  if (!ticket) {
+    console.warn('Null or undefined ticket provided to formatTicketForDisplay');
+    return null;
+  }
+
+  // Less strict validation - only check for essential properties
+  if (!ticket.numbers || !Array.isArray(ticket.numbers)) {
     console.warn('Invalid ticket format provided to formatTicketForDisplay', ticket);
     return null;
   }
 
-  const calledSet = new Set(calledNumbers);
-  const status = calculateTicketStatus(ticket.numbers, calledNumbers);
-
+  // Ensure calledNumbers is an array
+  const calledNumbersArray = Array.isArray(calledNumbers) ? calledNumbers : [];
+  const calledSet = new Set(calledNumbersArray);
+  
+  // Calculate status with error handling
+  let status;
+  try {
+    status = calculateTicketStatus(ticket.numbers, calledNumbersArray);
+  } catch (error) {
+    console.error('Error calculating ticket status:', error);
+    // Provide a default status if calculation fails
+    status = {
+      matchedNumbers: 0,
+      completionPercentage: 0,
+      patterns: {
+        topLine: false,
+        middleLine: false,
+        bottomLine: false,
+        corners: false,
+        fullHouse: false
+      }
+    };
+  }
+  
+  // Return formatted ticket
   return {
-    id: ticket.id,
-    numbers: ticket.numbers.map(row =>
+    id: ticket.id || 'unknown',
+    numbers: ticket.numbers.map(row => 
       row.map(number => ({
         value: number,
         called: number !== 0 && calledSet.has(number),
@@ -165,7 +193,21 @@ export const formatTicketForDisplay = (ticket, calledNumbers = []) => {
  * @returns {Array} Array of won prize types
  */
 export const checkTicketPrizes = (ticket, calledNumbers) => {
-  const status = calculateTicketStatus(ticket.numbers, calledNumbers);
+  // Handle invalid input
+  if (!ticket || !ticket.numbers || !Array.isArray(calledNumbers)) {
+    return [];
+  }
+  
+  // Get status
+  let status;
+  try {
+    status = calculateTicketStatus(ticket.numbers, calledNumbers);
+  } catch (error) {
+    console.error('Error checking ticket prizes:', error);
+    return [];
+  }
+  
+  // Check which prizes have been won
   const prizes = [];
 
   if (status.patterns.fullHouse) prizes.push('FULL_HOUSE');
@@ -177,10 +219,28 @@ export const checkTicketPrizes = (ticket, calledNumbers) => {
   return prizes;
 };
 
+/**
+ * Create a new ticket with default structure
+ * @returns {Object} Empty ticket template
+ */
+export const createEmptyTicket = (id = '0') => {
+  return {
+    id,
+    numbers: [
+      [0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    ],
+    status: 'available'
+  };
+};
+
+// Export all functions and constants
 export default {
   validateTicket,
   calculateTicketStatus,
   formatTicketForDisplay,
   checkTicketPrizes,
+  createEmptyTicket,
   TICKET_CONSTANTS,
 };
