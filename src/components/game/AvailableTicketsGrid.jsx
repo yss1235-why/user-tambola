@@ -4,7 +4,7 @@ import { useGame } from '../../context/GameContext';
 import TicketCard from './TicketCard';
 
 const AvailableTicketsGrid = () => {
-  const { currentGame } = useGame();
+  const { currentGame, players } = useGame();
   const [allTickets, setAllTickets] = useState([]);
   const [availableTickets, setAvailableTickets] = useState([]);
   const [bookedTickets, setBookedTickets] = useState([]);
@@ -14,16 +14,55 @@ const AvailableTicketsGrid = () => {
     // Extract tickets from game data
     if (currentGame?.activeTickets?.tickets) {
       const tickets = currentGame.activeTickets.tickets.filter(Boolean);
-      setAllTickets(tickets);
+      
+      // Check if a ticket is booked by looking at Players data
+      const isTicketBooked = (ticketId) => {
+        // First check direct booking status
+        const ticket = tickets.find(t => t.id.toString() === ticketId.toString());
+        if (ticket && (ticket.status === 'booked' || ticket.bookingDetails?.playerName)) {
+          return true;
+        }
+        
+        // Then check Players data
+        if (players) {
+          for (const key in players) {
+            if (key.startsWith('player_')) {
+              const playerTickets = players[key].tickets || [];
+              if (playerTickets.includes(ticketId.toString())) {
+                return true;
+              }
+            }
+          }
+        }
+        
+        return false;
+      };
+      
+      // Update ticket booking status based on Players data
+      const updatedTickets = tickets.map(ticket => {
+        const ticketCopy = { ...ticket };
+        // Set booked status if found in Players data
+        if (isTicketBooked(ticket.id) && ticketCopy.status !== 'booked') {
+          ticketCopy.status = 'booked';
+        }
+        return ticketCopy;
+      });
+      
+      setAllTickets(updatedTickets);
       
       // Split into available and booked
-      const available = tickets.filter(ticket => ticket.status !== 'booked' && !ticket.bookingDetails?.playerName);
-      const booked = tickets.filter(ticket => ticket.status === 'booked' || ticket.bookingDetails?.playerName);
+      const available = updatedTickets.filter(ticket => 
+        ticket.status !== 'booked' && !ticket.bookingDetails?.playerName
+      );
+      
+      const booked = updatedTickets.filter(ticket => 
+        ticket.status === 'booked' || ticket.bookingDetails?.playerName
+      );
       
       setAvailableTickets(available);
       setBookedTickets(booked);
     }
-  }, [currentGame?.activeTickets?.tickets]);
+  }, [currentGame?.activeTickets?.tickets, players]);
 
   const displayedTickets = activeTab === 'all' ? allTickets : 
                           activeTab === 'available' ? availableTickets : 
