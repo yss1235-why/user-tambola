@@ -296,7 +296,7 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
     }
     
     // 4. Fallback to ticket number
-    return null;
+    return `Ticket #${ticketId}`;
   };
 
   useEffect(() => {
