@@ -1,4 +1,4 @@
-// src/context/AuthContext.jsx
+// src/context/AuthContext.jsx - updated to reuse anonymous sessions
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, signInAnonymousUser, getCurrentUser } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -9,12 +9,23 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
-  // Set up auth state listener
+  // Set up auth state listener - only once
   useEffect(() => {
+    if (hasInitialized) return;
+
+    console.log("Setting up auth state listener");
+    
     const unsubscribe = onAuthStateChanged(auth, 
       (user) => {
-        setCurrentUser(user);
+        if (user) {
+          console.log("Auth state changed - user authenticated:", user.uid);
+          setCurrentUser(user);
+        } else {
+          console.log("Auth state changed - no authenticated user");
+          setCurrentUser(null);
+        }
         setLoading(false);
       },
       (error) => {
@@ -24,36 +35,68 @@ export const AuthProvider = ({ children }) => {
       }
     );
 
+    setHasInitialized(true);
+
     // Clean up subscription
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      console.log("Cleaning up auth state listener");
+      unsubscribe();
+    };
+  }, [hasInitialized]);
 
   // Initialize anonymous authentication if not already authenticated
   useEffect(() => {
     async function initializeAuth() {
-      try {
-        // Only try to sign in if not already loading and no user
-        if (!loading && !currentUser && !error) {
+      // Only attempt sign-in once after loading completes and we confirmed no current user
+      if (hasInitialized && !loading && !currentUser && !error) {
+        try {
+          console.log("Initializing anonymous authentication");
           setLoading(true);
-          await signInAnonymousUser();
-          // No need to setCurrentUser as the auth state listener will handle it
+          
+          // First check if there's an existing session
+          const existingUser = await getCurrentUser();
+          if (existingUser) {
+            console.log("Found existing user session:", existingUser.uid);
+            setCurrentUser(existingUser);
+            setLoading(false);
+            return;
+          }
+          
+          // If no existing session, sign in anonymously
+          const user = await signInAnonymousUser();
+          console.log("New anonymous user created:", user.uid);
+          setCurrentUser(user);
+        } catch (error) {
+          console.error("Anonymous auth initialization error:", error);
+          setError(error.message);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Anonymous auth initialization error:", error);
-        setError(error.message);
-        setLoading(false);
       }
     }
 
     initializeAuth();
-  }, [currentUser, loading, error]);
+  }, [hasInitialized, loading, currentUser, error]);
 
   // Refresh authentication if needed
   const refreshAuth = async () => {
     try {
       setLoading(true);
       setError(null);
-      await signInAnonymousUser();
+      
+      // Check for existing session first
+      const existingUser = await getCurrentUser();
+      if (existingUser) {
+        console.log("Using existing user for refresh:", existingUser.uid);
+        setCurrentUser(existingUser);
+        setLoading(false);
+        return;
+      }
+      
+      // If no existing session, create a new one
+      const user = await signInAnonymousUser();
+      console.log("Created new user during refresh:", user.uid);
+      setCurrentUser(user);
       setLoading(false);
     } catch (error) {
       console.error("Auth refresh error:", error);
