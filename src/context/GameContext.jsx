@@ -22,12 +22,13 @@ export const GameProvider = ({ children }) => {
     lastCalledNumber: null,
     tickets: [],
     bookings: {},
+    demoMode: false
   });
 
   // Set up Firebase listeners once authenticated
   useEffect(() => {
     // Don't proceed if still loading auth or if there's an auth error
-    if (authLoading || authError || !currentUser) {
+    if (authLoading || authError) {
       return;
     }
     
@@ -36,6 +37,24 @@ export const GameProvider = ({ children }) => {
     // Set up async function to handle listeners
     const setupListeners = async () => {
       try {
+        // Check if we should use demo data (when Firebase connection fails)
+        const useDemoData = !currentUser || import.meta.env.VITE_USE_DEMO_DATA === 'true';
+        
+        if (useDemoData && appConfig.firebase.demoMode?.enabled) {
+          console.log('Using demo data for development/testing');
+          setGameState(prev => ({
+            ...prev,
+            loading: false,
+            demoMode: true,
+            currentGame: getMockGameData(),
+            phase: 3, // Playing phase
+            calledNumbers: [1, 5, 10, 15, 23, 27, 38, 42, 56, 61, 75, 80, 89],
+            lastCalledNumber: 89,
+            tickets: generateMockTickets(),
+          }));
+          return () => {}; // Return empty cleanup function
+        }
+
         // Initialize listeners with the databaseUtils that handle authentication
         const gameUnsubscribe = await databaseUtils.listenToPath(BASE_PATH, 
           (snapshot) => {
@@ -56,20 +75,51 @@ export const GameProvider = ({ children }) => {
                 lastCalledNumber: gameData.numberSystem?.currentNumber,
               }));
             } else {
-              setGameState(prev => ({
-                ...prev,
-                loading: false,
-                error: 'No game data available',
-              }));
+              // If we don't have game data and demo mode is enabled, use mock data
+              if (appConfig.firebase.demoMode?.enabled) {
+                console.log('No game data available, using demo data');
+                setGameState(prev => ({
+                  ...prev,
+                  loading: false,
+                  demoMode: true,
+                  currentGame: getMockGameData(),
+                  phase: 3, // Playing phase
+                  calledNumbers: [1, 5, 10, 15, 23, 27, 38, 42, 56, 61, 75, 80, 89],
+                  lastCalledNumber: 89,
+                  tickets: generateMockTickets(),
+                }));
+              } else {
+                setGameState(prev => ({
+                  ...prev,
+                  loading: false,
+                  error: 'No game data available',
+                }));
+              }
             }
           },
           (error) => {
             console.error('Error fetching game data:', error);
-            setGameState(prev => ({
-              ...prev,
-              loading: false,
-              error: 'Failed to connect to game server: ' + error.message,
-            }));
+            
+            // If we have an error and demo mode is enabled, use mock data
+            if (appConfig.firebase.demoMode?.enabled) {
+              console.log('Error fetching game data, using demo data');
+              setGameState(prev => ({
+                ...prev,
+                loading: false,
+                demoMode: true,
+                currentGame: getMockGameData(),
+                phase: 3, // Playing phase
+                calledNumbers: [1, 5, 10, 15, 23, 27, 38, 42, 56, 61, 75, 80, 89],
+                lastCalledNumber: 89,
+                tickets: generateMockTickets(),
+              }));
+            } else {
+              setGameState(prev => ({
+                ...prev,
+                loading: false,
+                error: 'Failed to connect to game server: ' + error.message,
+              }));
+            }
           }
         );
 
@@ -128,11 +178,27 @@ export const GameProvider = ({ children }) => {
         };
       } catch (error) {
         console.error("Error setting up game listeners:", error);
-        setGameState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Error initializing game data: ' + error.message,
-        }));
+        
+        // If we have an error and demo mode is enabled, use mock data
+        if (appConfig.firebase.demoMode?.enabled) {
+          console.log('Error setting up game listeners, using demo data');
+          setGameState(prev => ({
+            ...prev,
+            loading: false,
+            demoMode: true,
+            currentGame: getMockGameData(),
+            phase: 3, // Playing phase
+            calledNumbers: [1, 5, 10, 15, 23, 27, 38, 42, 56, 61, 75, 80, 89],
+            lastCalledNumber: 89,
+            tickets: generateMockTickets(),
+          }));
+        } else {
+          setGameState(prev => ({
+            ...prev,
+            loading: false,
+            error: 'Error initializing game data: ' + error.message,
+          }));
+        }
         
         // Return empty cleanup function
         return () => {};
@@ -182,7 +248,7 @@ export const GameProvider = ({ children }) => {
     return <div>Authenticating...</div>;
   }
 
-  if (authError) {
+  if (authError && !gameState.demoMode) {
     return <div>Authentication Error: {authError}</div>;
   }
 
@@ -210,5 +276,134 @@ export const useGame = () => {
   }
   return context;
 };
+
+// Mock game data for development/demo when Firebase is unavailable
+function getMockGameData() {
+  return {
+    gameState: {
+      phase: 3, // Playing phase
+      status: 'active',
+      winners: {
+        quickFive: ["demo-1"],
+        topLine: ["demo-2"]
+      }
+    },
+    numberSystem: {
+      calledNumbers: [1, 5, 10, 15, 23, 27, 38, 42, 56, 61, 75, 80, 89],
+      currentNumber: 89,
+      callDelay: 8
+    },
+    activeTickets: {
+      tickets: generateMockTickets(),
+      bookings: [
+        { number: "demo-1", playerName: "Player 1", timestamp: Date.now() - 3600000 },
+        { number: "demo-2", playerName: "Player 2", timestamp: Date.now() - 1800000 },
+        { number: "demo-3", playerName: "Player 3", timestamp: Date.now() - 900000 }
+      ]
+    },
+    settings: {
+      hostPhone: "1234567890",
+      prizes: {
+        quickFive: true,
+        topLine: true,
+        middleLine: true,
+        bottomLine: true,
+        corners: true,
+        fullHouse: true
+      }
+    }
+  };
+}
+
+// Generate sample tickets for development/demo
+function generateMockTickets() {
+  const tickets = [];
+  const playerNames = appConfig.firebase.demoMode?.playerNames || [
+    "Demo Player 1", "Demo Player 2", "Demo Player 3", 
+    "Demo Player 4", "Demo Player 5"
+  ];
+  
+  // Create demo tickets
+  const ticketCount = appConfig.firebase.demoMode?.ticketCount || 8;
+  for (let i = 1; i <= ticketCount; i++) {
+    tickets.push({
+      id: `demo-${i}`,
+      numbers: generateTicketNumbers(),
+      bookingDetails: i <= playerNames.length ? {
+        playerName: playerNames[i-1],
+        timestamp: Date.now() - (i * 600000)
+      } : null,
+      status: i <= playerNames.length ? 'booked' : 'available'
+    });
+  }
+  
+  return tickets;
+}
+
+// Generate valid Tambola ticket numbers
+function generateTicketNumbers() {
+  // Initialize ticket with zeros
+  const ticket = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  ];
+  
+  // Each column has its range of numbers
+  const columnRanges = [
+    [1, 9], [10, 19], [20, 29], [30, 39], [40, 49],
+    [50, 59], [60, 69], [70, 79], [80, 90]
+  ];
+  
+  // For each column, select positions and numbers
+  for (let col = 0; col < 9; col++) {
+    // Determine how many numbers in this column (1-3)
+    const count = col === 0 || col === 8 ? 1 + Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 3);
+    
+    // Select random rows for this column
+    const rows = shuffleArray([0, 1, 2]).slice(0, count);
+    
+    // Set numbers in the selected positions
+    const [min, max] = columnRanges[col];
+    rows.forEach((row, index) => {
+      // Generate a number within the column's range
+      ticket[row][col] = min + Math.floor(Math.random() * (max - min + 1));
+    });
+  }
+  
+  // Ensure each row has exactly 5 numbers
+  for (let row = 0; row < 3; row++) {
+    let numbersInRow = ticket[row].filter(n => n !== 0).length;
+    
+    // If too many numbers, remove some
+    while (numbersInRow > 5) {
+      const nonZeroIndices = ticket[row].map((n, i) => n !== 0 ? i : -1).filter(i => i !== -1);
+      const indexToRemove = nonZeroIndices[Math.floor(Math.random() * nonZeroIndices.length)];
+      ticket[row][indexToRemove] = 0;
+      numbersInRow--;
+    }
+    
+    // If too few numbers, add some
+    while (numbersInRow < 5) {
+      const zeroIndices = ticket[row].map((n, i) => n === 0 ? i : -1).filter(i => i !== -1);
+      const indexToAdd = zeroIndices[Math.floor(Math.random() * zeroIndices.length)];
+      const [min, max] = columnRanges[indexToAdd];
+      ticket[row][indexToAdd] = min + Math.floor(Math.random() * (max - min + 1));
+      numbersInRow++;
+    }
+  }
+  
+  return ticket;
+}
+
+// Helper function to shuffle an array
+function shuffleArray(array) {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+}
 
 export default GameContext;
