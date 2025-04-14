@@ -1,4 +1,4 @@
-// src/context/GameContext.jsx - Fixed timeout issue
+// src/context/GameContext.jsx
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { db, HOST_ID, databaseUtils } from '../config/firebase';
 import { useAuth } from './AuthContext';
@@ -21,6 +21,7 @@ export const GameProvider = ({ children, onError }) => {
     lastCalledNumber: null,
     tickets: [],
     bookings: {},
+    players: {},
   });
   
   // Use refs to track mounted state and prevent cleanup on re-renders
@@ -30,12 +31,14 @@ export const GameProvider = ({ children, onError }) => {
   const unsubscribers = useRef({
     game: null,
     bookings: null,
-    tickets: null
+    tickets: null,
+    players: null
   });
   const dataReceived = useRef({
     game: false,
     tickets: false,
-    bookings: false
+    bookings: false,
+    players: false
   });
 
   // Set isMounted to false when component unmounts
@@ -224,6 +227,36 @@ export const GameProvider = ({ children, onError }) => {
           }
         );
         
+        // Players listener
+        console.log("Setting up players listener at:", `${BASE_PATH}/Players`);
+        unsubscribers.current.players = await databaseUtils.listenToPath(`${BASE_PATH}/Players`, 
+          (snapshot) => {
+            if (!isMounted.current) return;
+            
+            const playersData = snapshot.val();
+            console.log("Players data received:", playersData ? "Yes" : "No");
+            
+            dataReceived.current.players = true;
+            
+            if (playersData) {
+              setGameState(prev => ({
+                ...prev,
+                players: playersData
+              }));
+            }
+          },
+          (error) => {
+            console.error('Error fetching players:', error);
+            if (isMounted.current) {
+              dataReceived.current.players = true;
+              setGameState(prev => ({
+                ...prev,
+                players: {}
+              }));
+            }
+          }
+        );
+        
         console.log("All Firebase listeners set up successfully");
       } catch (error) {
         console.error("Error setting up game listeners:", error);
@@ -250,6 +283,7 @@ export const GameProvider = ({ children, onError }) => {
       if (unsubscribers.current.game) unsubscribers.current.game();
       if (unsubscribers.current.bookings) unsubscribers.current.bookings();
       if (unsubscribers.current.tickets) unsubscribers.current.tickets();
+      if (unsubscribers.current.players) unsubscribers.current.players();
       listenersActive.current = false;
     };
   }, []); // Empty dependency array to ensure this runs only once
@@ -265,7 +299,18 @@ export const GameProvider = ({ children, onError }) => {
     // Make phase constants available in the context
     phases: appConfig.gameConstants.phases,
     // Provide text configuration for components
-    appText: appConfig.appText
+    appText: appConfig.appText,
+    // Utility function to get player name
+    getPlayerName: (playerId) => {
+      const players = gameState.players;
+      // Loop through all player entries to find the matching player
+      for (const key in players) {
+        if (key.startsWith('player_') && players[key].id === playerId) {
+          return players[key].name || null;
+        }
+      }
+      return null;
+    }
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
