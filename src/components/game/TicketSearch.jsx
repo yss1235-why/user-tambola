@@ -1,4 +1,4 @@
-// src/components/game/TicketSearch.jsx - Fix for ticket display
+// src/components/game/TicketSearch.jsx - Remove duplicate available tickets
 import React, { useState, useEffect, useCallback } from 'react';
 import { useGame } from '../../context/GameContext';
 import TicketCard from './TicketCard';
@@ -13,23 +13,6 @@ const TicketSearch = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchHistory, setSearchHistory] = useState([]);
   const [activeView, setActiveView] = useState('results'); // 'results', 'recent', 'history'
-  const [availableTickets, setAvailableTickets] = useState([]);
-
-  // Find available tickets and display them when no search is active
-  useEffect(() => {
-    if (!currentGame?.activeTickets?.tickets) {
-      setAvailableTickets([]);
-      return;
-    }
-    
-    // Get all valid tickets that are available (not booked)
-    const tickets = currentGame.activeTickets.tickets.filter(ticket => 
-      ticket && ticket.status !== 'booked'
-    );
-    
-    // Limit to 6 for preview
-    setAvailableTickets(tickets.slice(0, 6));
-  }, [currentGame?.activeTickets?.tickets]);
 
   const performSearch = useCallback((query) => {
     // Reset states
@@ -394,28 +377,10 @@ const TicketSearch = () => {
             </div>
           )}
 
-          {/* Empty state for results view - Show available tickets */}
+          {/* Empty state for results view */}
           {!noResults && searchResults.length === 0 && !isSearching && (
-            <div className="p-3">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">
-                Available Tickets
-              </h3>
-              {availableTickets.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {availableTickets.map(ticket => (
-                    <div key={ticket.id} onClick={() => handleTicketSelect(ticket)}>
-                      <TicketCard 
-                        ticket={ticket}
-                        showRemoveButton={false}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-sm text-gray-600 py-4">
-                  No available tickets found. Enter a ticket number or player name to search.
-                </p>
-              )}
+            <div className="text-center py-6 px-4">
+              <p className="text-sm text-gray-600">Enter a ticket number or player name to search</p>
             </div>
           )}
         </>
