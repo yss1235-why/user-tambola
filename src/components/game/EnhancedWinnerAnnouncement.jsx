@@ -98,6 +98,64 @@ const EnhancedWinnerAnnouncement = () => {
   const audioRef = useRef(new Audio());
   const hasInteractedRef = useRef(false);
 
+  // Improved findPlayerName function to handle array structure with null entries
+  const findPlayerName = (ticketId) => {
+    if (!ticketId || !currentGame) return "Player";
+    
+    // Convert to string for safer comparison
+    const ticketIdStr = ticketId.toString();
+    
+    // 1. Check bookings array, accounting for null entries
+    if (currentGame.activeTickets?.bookings) {
+      for (let i = 0; i < currentGame.activeTickets.bookings.length; i++) {
+        const booking = currentGame.activeTickets.bookings[i];
+        if (booking && booking.number && booking.number.toString() === ticketIdStr) {
+          if (booking.playerName) {
+            return booking.playerName;
+          }
+        }
+      }
+    }
+    
+    // 2. Check in players object directly
+    if (currentGame.players) {
+      for (const playerId in currentGame.players) {
+        const player = currentGame.players[playerId];
+        const playerTickets = player.tickets || [];
+        
+        // Check if this player has the ticket we're looking for
+        if (playerTickets.includes(ticketIdStr)) {
+          return player.name || `Player`;
+        }
+      }
+    }
+    
+    // 3. Try to get from the ticket's booking details
+    if (currentGame.activeTickets?.tickets) {
+      for (let i = 0; i < currentGame.activeTickets.tickets.length; i++) {
+        const ticket = currentGame.activeTickets.tickets[i];
+        if (ticket && ticket.id && ticket.id.toString() === ticketIdStr) {
+          if (ticket.bookingDetails?.playerName) {
+            return ticket.bookingDetails.playerName;
+          } else if (ticket.status === 'booked') {
+            // If ticket is booked but doesn't have player details, check again in bookings
+            if (currentGame.activeTickets?.bookings) {
+              const booking = currentGame.activeTickets.bookings.find(
+                b => b && b.number && b.number.toString() === ticketIdStr
+              );
+              if (booking && booking.playerName) {
+                return booking.playerName;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 4. Last fallback
+    return "Player";
+  };
+
   // Play sound effect based on prize type
   const playWinSound = (prizeType) => {
     try {
@@ -180,26 +238,8 @@ const EnhancedWinnerAnnouncement = () => {
       
       // Get player names for new winners
       newTicketIds.forEach(ticketId => {
-        // Find ticket in active tickets
-        const ticket = currentGame.activeTickets?.tickets?.find(
-          t => t && t.id && t.id.toString() === ticketId.toString()
-        );
-        
-        if (!ticket) return;
-        
-        // Get player name
-        let playerName = 'Unknown Player';
-        
-        if (ticket.bookingDetails?.playerName) {
-          playerName = ticket.bookingDetails.playerName;
-        } else if (currentGame.activeTickets?.bookings) {
-          const booking = currentGame.activeTickets.bookings.find(
-            b => b && b.number && b.number.toString() === ticketId.toString()
-          );
-          if (booking && booking.playerName) {
-            playerName = booking.playerName;
-          }
-        }
+        // Get player name using the improved function
+        const playerName = findPlayerName(ticketId);
         
         // Add to winners
         newWinnersList.push({
