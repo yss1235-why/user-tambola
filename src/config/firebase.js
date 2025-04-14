@@ -5,8 +5,7 @@ import { getAnalytics } from "firebase/analytics";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import appConfig from './appConfig';
 
-// Get Firebase config using environment variables if available (for production)
-// or fallback to the provided configuration (for development)
+// Get Firebase config using environment variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -49,76 +48,26 @@ export const getCurrentUser = () => {
   });
 };
 
-// Game Constants from centralized config
-export const GAME_PHASES = appConfig.gameConstants.phases;
-export const GAME_STATUS = appConfig.gameConstants.status;
-
-export const PRIZE_TYPES = {
-  QUICK_FIVE: 'quickFive',
-  TOP_LINE: 'topLine',
-  MIDDLE_LINE: 'middleLine',
-  BOTTOM_LINE: 'bottomLine',
-  CORNERS: 'corners',
-  STAR_CORNERS: 'starCorners',
-  HALF_SHEET: 'halfSheet',
-  FULL_SHEET: 'fullSheet',
-  FULL_HOUSE: 'fullHouse',
-  SECOND_FULL_HOUSE: 'secondFullHouse'
-};
-
-// Admin Constants
-export const ADMIN_ROLES = {
-  SUPER_ADMIN: 'superAdmin',
-  ADMIN: 'admin',
-  HOST: 'host'
-};
-
-// Ticket Constants
-export const TICKET_STATUS = {
-  AVAILABLE: 'available',
-  BOOKED: 'booked',
-  CLAIMED: 'claimed'
-};
-
 // Database paths using the centralized HOST_ID
 export const PATHS = {
-  // Game related paths
   currentGame: `hosts/${HOST_ID}/currentGame`,
   gameState: `hosts/${HOST_ID}/currentGame/gameState`,
   numberSystem: `hosts/${HOST_ID}/currentGame/numberSystem`,
   activeTickets: `hosts/${HOST_ID}/currentGame/activeTickets/tickets`,
   winners: `hosts/${HOST_ID}/currentGame/winners`,
   settings: `hosts/${HOST_ID}/settings`,
-  
-  // Host related paths
   hostProfile: `hosts/${HOST_ID}/profile`,
   hostSettings: `hosts/${HOST_ID}/settings`,
   gameHistory: `hosts/${HOST_ID}/gameHistory`,
-  
-  // Admin related paths
-  admins: 'admins',
-  hostsList: 'hosts'
 };
 
-// Database utilities for read-only operations with authentication
+// Game constants
+export const GAME_PHASES = appConfig.gameConstants.phases;
+export const GAME_STATUS = appConfig.gameConstants.status;
+
+// Database utilities with authentication
 export const databaseUtils = {
-  listenToPath: (path, callback) => {
-    const reference = ref(database, path);
-    
-    const unsubscribe = onValue(reference, 
-      (snapshot) => {
-        const data = snapshot.val();
-        console.log(`Reading data from ${path}:`, data);
-        callback(snapshot);
-      }, 
-      (error) => {
-        console.error(`Error reading from ${path}:`, error.message);
-      }
-    );
-
-    return unsubscribe;
-  },
-
+  // Authenticate and then fetch data
   fetchData: async (path) => {
     try {
       // Ensure user is authenticated before fetching data
@@ -135,24 +84,38 @@ export const databaseUtils = {
       return null;
     }
   },
-
-  subscribeToGameUpdates: (gameId, callback) => {
-    const gamePath = `hosts/${HOST_ID}/currentGame`;
-    return databaseUtils.listenToPath(gamePath, callback);
-  },
-
-  subscribeToTicketUpdates: (callback) => {
-    const ticketsPath = `hosts/${HOST_ID}/currentGame/activeTickets/tickets`;
-    return databaseUtils.listenToPath(ticketsPath, callback);
-  },
-
-  subscribeToNumberCalls: (callback) => {
-    const numbersPath = `hosts/${HOST_ID}/currentGame/numberSystem`;
-    return databaseUtils.listenToPath(numbersPath, callback);
+  
+  // Set up a listener with authentication
+  listenToPath: async (path, callback, errorCallback) => {
+    try {
+      // Ensure authentication first
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        await signInAnonymousUser();
+      }
+      
+      const reference = ref(database, path);
+      const unsubscribe = onValue(reference, 
+        (snapshot) => {
+          const data = snapshot.val();
+          console.log(`Reading data from ${path}:`, data);
+          callback(snapshot);
+        }, 
+        (error) => {
+          console.error(`Error reading from ${path}:`, error.message);
+          if (errorCallback) errorCallback(error);
+        }
+      );
+      
+      return unsubscribe;
+    } catch (error) {
+      console.error(`Error setting up listener for ${path}:`, error.message);
+      if (errorCallback) errorCallback(error);
+      return () => {}; // Return empty function as unsubscribe
+    }
   }
 };
 
-// For debugging purposes, log the current firebase configuration (without sensitive data)
 console.log('Firebase initialized with project:', firebaseConfig.projectId);
 
 export { app, database as db, analytics, auth, HOST_ID };
