@@ -1,67 +1,109 @@
-// src/utils/firebaseDebug.js
-import { db, HOST_ID, databaseUtils } from '../config/firebase';
-import { ref, get } from 'firebase/database';
-
-export async function diagnoseFirebaseConnection() {
-  console.log("Starting Firebase connection diagnosis...");
+// src/config/appConfig.js
+const appConfig = {
+  // Firebase/Host Configuration - Default values (will be overridden by environment variables)
+  firebase: {
+    // Using a simple hostId for development
+    hostId: "public-demo-host", // Default host ID (override with VITE_FIREBASE_HOST_ID)
+  },
   
-  try {
-    // Test 1: Basic Firebase configuration
-    console.log("Test 1: Checking Firebase configuration...");
-    if (!db) {
-      console.error("Test 1 Failed: Firebase database is not initialized");
-      return { 
-        success: false, 
-        error: "Firebase database initialization failed" 
-      };
-    }
-    console.log("Test 1 Passed: Firebase database is initialized");
+  // Application Text Configuration
+  appText: {
+    websiteTitle: "Tambola Game", // Website title (shows in browser tab)
+    appName: "Tambola Game", // App name (shown in header)
+    loadingText: "Loading Tambola Game...", // Loading screen text
     
-    // Test 2: Authentication
-    console.log("Test 2: Checking authentication...");
-    try {
-      const currentUser = await databaseUtils.getCurrentUser();
-      console.log("Test 2 Passed: Authentication working");
-    } catch (error) {
-      console.error("Test 2 Failed:", error.message);
-      return { 
-        success: false, 
-        error: `Authentication error: ${error.message}`
-      };
-    }
+    // Game phase text
+    phaseText: {
+      setup: "Game Setup",
+      booking: "Booking Open",
+      playing: "Game in Progress",
+      noGame: "No Active Game"
+    },
     
-    // Test 3: Database access
-    console.log("Test 3: Testing database access...");
-    try {
-      // Try to read a sample location
-      const snapshot = await databaseUtils.fetchData('hosts');
-      
-      if (snapshot === null) {
-        console.warn("Test 3 Warning: No data found at 'hosts' path, but connection seems to work");
-      } else {
-        console.log("Test 3 Passed: Database connection successful");
-      }
-    } catch (error) {
-      console.error("Test 3 Failed:", error.message);
-      return { 
-        success: false, 
-        error: `Database access error: ${error.message}`
-      };
+    // Footer text
+    footerText: {
+      copyright: `© ${new Date().getFullYear()} Tambola Game. All rights reserved.`,
+      refreshButton: "Refresh Game"
     }
-    
-    // All tests passed or had acceptable warnings
-    return { 
-      success: true,
-      message: "Connection diagnostics completed successfully"
-    };
-  } catch (error) {
-    console.error("Firebase diagnosis error:", error);
-    return { 
-      success: false, 
-      error: `Diagnosis error: ${error.message}`,
-      code: error.code || 'unknown'
-    };
+  },
+  
+  // Game Constants
+  gameConstants: {
+    phases: {
+      SETUP: 1,
+      BOOKING: 2,
+      PLAYING: 3
+    },
+    status: {
+      ACTIVE: 'active',
+      ENDED: 'ended',
+      CANCELLED: 'cancelled'
+    }
+  },
+  
+  // Prize Configuration 
+  prizeConfig: {
+    quickFive: { 
+      label: 'Quick Five',
+      description: 'First to mark any 5 numbers',
+      icon: '5️⃣',
+      order: 1 
+    },
+    topLine: { 
+      label: 'Top Line',
+      description: 'Complete the first line',
+      icon: '⬆️',
+      order: 2 
+    },
+    middleLine: { 
+      label: 'Middle Line',
+      description: 'Complete the middle line',
+      icon: '➡️',
+      order: 3 
+    },
+    bottomLine: { 
+      label: 'Bottom Line',
+      description: 'Complete the bottom line',
+      icon: '⬇️',
+      order: 4 
+    },
+    corners: { 
+      label: 'Corners',
+      description: 'Mark all four corners',
+      icon: '🎯',
+      order: 5 
+    },
+    fullHouse: { 
+      label: 'Full House',
+      description: 'Complete the entire ticket',
+      icon: '👑',
+      order: 6 
+    },
+    secondFullHouse: { 
+      label: 'Second Full House',
+      description: 'Second player to complete the entire ticket',
+      icon: '🥈',
+      order: 7 
+    },
+    starCorners: { 
+      label: 'Star Corners',
+      description: 'Mark the star pattern corners',
+      icon: '⭐',
+      order: 8 
+    },
+    fullSheet: { 
+      label: 'Full Sheet',
+      description: 'Complete all tickets in a sheet',
+      icon: '📃',
+      order: 9 
+    },
+    halfSheet: { 
+      label: 'Half Sheet',
+      description: 'Complete half of the tickets in a sheet',
+      icon: '📄',
+      order: 10 
+    }
   }
-}
+};
 
-export default { diagnoseFirebaseConnection };
+export default appConfig;
