@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { db, HOST_ID } from '../../config/firebase';
 import { ref, get } from 'firebase/database';
 
+
+
 const TicketCell = ({ number, isMarked }) => {
   const cellClasses = `
     w-full
