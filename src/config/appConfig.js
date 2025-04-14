@@ -2,24 +2,15 @@
 const appConfig = {
   // Firebase/Host Configuration - Default values (will be overridden by environment variables)
   firebase: {
-    // Using a new default hostId for demo purposes
-    hostId: "demoHostId", // Default host ID (override with VITE_FIREBASE_HOST_ID)
-    // Demo Configuration
-    demoMode: {
-      enabled: true, // Enable demo mode when no valid Firebase connection
-      ticketCount: 10, // Number of demo tickets to generate
-      playerNames: [
-        "Aarav Sharma", "Zara Patel", "Vikram Singh", "Neha Kapoor", 
-        "Rohan Mehta", "Ananya Desai", "Arjun Kumar", "Priya Joshi"
-      ]
-    }
+    // Using the correct host ID from your Firebase data
+    hostId: "x4q2vWEh8hfdjLwoY8KzVwCD9dB2", // Your actual host ID
   },
   
   // Application Text Configuration
   appText: {
-    websiteTitle: "Tambola Game", // Website title (shows in browser tab)
-    appName: "Tambola Game", // App name (shown in header)
-    loadingText: "Loading Tambola Game...", // Loading screen text
+    websiteTitle: "Jo's & Nim's Tambola", // Website title (shows in browser tab)
+    appName: "Jo's & Nim's", // App name (shown in header)
+    loadingText: "Loading Jo's & Nim's Tambola Game...", // Loading screen text
     
     // Game phase text
     phaseText: {
@@ -31,7 +22,7 @@ const appConfig = {
     
     // Footer text
     footerText: {
-      copyright: `© ${new Date().getFullYear()} Tambola Game. All rights reserved.`,
+      copyright: `© ${new Date().getFullYear()} Jo's & Nim's Tambola. All rights reserved.`,
       refreshButton: "Refresh Game"
     }
   },
@@ -46,7 +37,8 @@ const appConfig = {
     status: {
       ACTIVE: 'active',
       ENDED: 'ended',
-      CANCELLED: 'cancelled'
+      CANCELLED: 'cancelled',
+      BOOKING: 'booking' // Added this to match your Firebase data
     }
   },
   
