@@ -35,9 +35,9 @@ const LastCalledNumber = ({ number }) => {
   if (!number) return null;
 
   return (
-    <div className="bg-blue-50 p-3 rounded-lg text-center">
+    <div className="bg-blue-50 p-2 sm:p-3 rounded-lg text-center">
       <p className="text-xs text-blue-600 font-medium">Last Called</p>
-      <div className="text-3xl font-bold text-blue-700 animate-bounce-slow">
+      <div className="text-2xl sm:text-3xl font-bold text-blue-700 animate-bounce-slow">
         {number}
       </div>
     </div>
@@ -50,7 +50,7 @@ const GameStats = ({ calledCount }) => {
   const percentage = Math.round((calledCount / total) * 100);
 
   return (
-    <div className="grid grid-cols-3 gap-2 text-center p-3 bg-gray-50 rounded-lg">
+    <div className="grid grid-cols-3 gap-2 text-center p-2 sm:p-3 bg-gray-50 rounded-lg">
       <div>
         <p className="text-xs text-gray-600">Called</p>
         <p className="text-sm font-semibold text-blue-600">{calledCount}</p>
@@ -72,7 +72,7 @@ const RecentNumbersList = ({ numbers }) => (
     {numbers.map((number) => (
       <span
         key={number}
-        className="inline-flex items-center justify-center w-7 h-7 text-xs bg-blue-100 text-blue-800 rounded-full font-medium"
+        className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 text-xs bg-blue-100 text-blue-800 rounded-full font-medium"
       >
         {number}
       </span>
@@ -92,7 +92,7 @@ const NumberBoard = () => {
   if (!isPlayingPhase) {
     return (
       <div className="card shadow-sm animate-fade-in">
-        <div className="p-4 text-center">
+        <div className="p-3 sm:p-4 text-center">
           <h2 className="text-base font-semibold text-gray-900 mb-2">
             Game Status
           </h2>
@@ -106,7 +106,7 @@ const NumberBoard = () => {
 
   return (
     <div className="card shadow-sm overflow-hidden animate-fade-in">
-      <div className="space-y-3 p-3">
+      <div className="space-y-2 sm:space-y-3 p-2 sm:p-3">
         {/* Last Called Number Display */}
         <LastCalledNumber number={lastCalledNumber} />
 
@@ -122,7 +122,7 @@ const NumberBoard = () => {
         </div>
 
         {/* Numbers Grid - Smaller for Mobile */}
-        <div className="grid grid-cols-10 gap-1">
+        <div className="grid grid-cols-9 sm:grid-cols-10 gap-1">
           {numbers.map((number) => (
             <NumberCell
               key={number}
@@ -135,7 +135,7 @@ const NumberBoard = () => {
       </div>
 
       {/* Mobile-friendly recent numbers list */}
-      <div className="border-t border-gray-100 p-3 bg-gray-50">
+      <div className="border-t border-gray-100 p-2 sm:p-3 bg-gray-50">
         <p className="text-xs font-medium text-gray-600 mb-2 text-center">Recent Numbers</p>
         <RecentNumbersList numbers={[...calledNumbers].reverse().slice(0, 10)} />
       </div>
