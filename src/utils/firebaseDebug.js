@@ -1,6 +1,7 @@
 // src/utils/firebaseDebug.js
 import { db, HOST_ID, databaseUtils } from '../config/firebase';
 import { ref, get } from 'firebase/database';
+import appConfig from '../config/appConfig';
 
 export async function diagnoseFirebaseConnection() {
   console.log("Starting Firebase connection diagnosis...");
@@ -22,14 +23,42 @@ export async function diagnoseFirebaseConnection() {
       const hostData = await databaseUtils.fetchData(`hosts/${HOST_ID}`);
       
       if (!hostData) {
+        // Check if we're in development mode and should activate demo mode
+        if (import.meta.env.DEV && appConfig.firebase.demoMode?.enabled) {
+          console.log("Development mode detected. Activating demo mode.");
+          return { 
+            success: true, 
+            demoMode: true,
+            message: "Running in demo mode - using sample data" 
+          };
+        }
+        
         console.error(`Test 2 Failed: Host ID '${HOST_ID}' doesn't exist or access denied`);
-        return { success: false, error: `Host ID '${HOST_ID}' doesn't exist or access denied` };
+        return { 
+          success: false, 
+          error: `Host ID '${HOST_ID}' doesn't exist or access denied`,
+          demoModeAvailable: appConfig.firebase.demoMode?.enabled
+        };
       }
       
       console.log("Test 2 Passed: Host data retrieved successfully");
     } catch (error) {
+      // Check if we're in development mode and should activate demo mode
+      if (import.meta.env.DEV && appConfig.firebase.demoMode?.enabled) {
+        console.log("Development mode detected. Activating demo mode.");
+        return { 
+          success: true, 
+          demoMode: true,
+          message: "Running in demo mode - using sample data" 
+        };
+      }
+      
       console.error("Test 2 Failed:", error.message);
-      return { success: false, error: `Error accessing host data: ${error.message}` };
+      return { 
+        success: false, 
+        error: `Error accessing host data: ${error.message}`,
+        demoModeAvailable: appConfig.firebase.demoMode?.enabled
+      };
     }
     
     // Test 3: Check currentGame path
@@ -39,7 +68,22 @@ export async function diagnoseFirebaseConnection() {
       
       if (!gameData) {
         console.error("Test 3 Failed: 'currentGame' path doesn't exist or access denied");
-        return { success: false, error: "Current game data not found or access denied" };
+        
+        // Check if we're in development mode and should activate demo mode
+        if (import.meta.env.DEV && appConfig.firebase.demoMode?.enabled) {
+          console.log("No current game found. Activating demo mode.");
+          return { 
+            success: true, 
+            demoMode: true,
+            message: "No active game found - using sample data" 
+          };
+        }
+        
+        return { 
+          success: false, 
+          error: "Current game data not found or access denied",
+          demoModeAvailable: appConfig.firebase.demoMode?.enabled
+        };
       }
       
       console.log("Test 3 Passed: Current game data retrieved successfully");
@@ -47,16 +91,42 @@ export async function diagnoseFirebaseConnection() {
       // All tests passed
       return { success: true, data: gameData };
     } catch (error) {
+      // Check if we're in development mode and should activate demo mode
+      if (import.meta.env.DEV && appConfig.firebase.demoMode?.enabled) {
+        console.log("Error fetching current game. Activating demo mode.");
+        return { 
+          success: true, 
+          demoMode: true,
+          message: "Error fetching game data - using sample data" 
+        };
+      }
+      
       console.error("Test 3 Failed:", error.message);
-      return { success: false, error: `Error accessing game data: ${error.message}` };
+      return { 
+        success: false, 
+        error: `Error accessing game data: ${error.message}`,
+        demoModeAvailable: appConfig.firebase.demoMode?.enabled
+      };
     }
     
   } catch (error) {
     console.error("Firebase diagnosis error:", error);
+    
+    // Check if we're in development mode and should activate demo mode
+    if (import.meta.env.DEV && appConfig.firebase.demoMode?.enabled) {
+      console.log("Error during diagnosis. Activating demo mode.");
+      return { 
+        success: true, 
+        demoMode: true,
+        message: "Firebase diagnosis error - using sample data" 
+      };
+    }
+    
     return { 
       success: false, 
       error: error.message,
-      code: error.code || 'unknown'
+      code: error.code || 'unknown',
+      demoModeAvailable: appConfig.firebase.demoMode?.enabled
     };
   }
 }
