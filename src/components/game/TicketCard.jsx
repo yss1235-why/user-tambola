@@ -1,6 +1,7 @@
 // src/components/game/TicketCard.jsx
 import React, { useMemo, useEffect, useState } from 'react';
 import { useGame } from '../../context/GameContext';
+import { Link } from 'react-router-dom';
 import { db, HOST_ID } from '../../config/firebase';
 import { ref, get } from 'firebase/database';
 
@@ -38,6 +39,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
 
   // Only show remove button during playing phase when explicitly enabled
   const shouldShowRemoveButton = showRemoveButton && phase === 3;
+  const isBooked = ticket.status === 'booked' || ticket.bookingDetails?.playerName;
 
   // Fetch host phone number from Firebase
   useEffect(() => {
@@ -124,10 +126,22 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
   return (
     <div className="card animate-fade-in hover:shadow-md transition-shadow duration-300">
       {/* Header */}
-      <div className="bg-blue-600 px-3 py-2 relative">
+      <div className={`px-3 py-2 relative ${isBooked ? 'bg-gray-600' : 'bg-blue-600'}`}>
         <div className="flex justify-between items-center">
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-white">#{ticket.id}</span>
+            <div className="flex items-center">
+              <span className="text-sm font-bold text-white">#{ticket.id}</span>
+              {isBooked && (
+                <span className="ml-2 px-1.5 py-0.5 bg-gray-200 text-gray-800 text-xs rounded-sm">
+                  Booked
+                </span>
+              )}
+              {!isBooked && (
+                <span className="ml-2 px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded-sm">
+                  Available
+                </span>
+              )}
+            </div>
             {playerName && (
               <span className="text-xs text-blue-100">
                 {playerName}
@@ -196,15 +210,24 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
         </div>
       )}
 
-      {/* Booking Button (Only in Booking Phase for Unbooked Tickets) */}
-      {phase === 2 && !playerName && (
+      {/* Booking Button (Only in Booking Phase for Available Tickets) */}
+      {phase === 2 && !isBooked && (
         <button
           onClick={handleBookingClick}
           className="w-full py-2 bg-green-600 text-white hover:bg-green-700
                    transition-colors text-sm font-medium rounded-b-xl"
         >
-          Book via WhatsApp
+          Book This
         </button>
+      )}
+
+      {/* Booked Info (Only in Booking Phase for Booked Tickets) */}
+      {phase === 2 && isBooked && (
+        <div className="w-full py-2 bg-gray-100 text-center rounded-b-xl">
+          <span className="text-sm text-gray-700">
+            {playerName ? `Booked by: ${playerName}` : 'Booked'}
+          </span>
+        </div>
       )}
     </div>
   );
