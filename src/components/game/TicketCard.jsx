@@ -40,7 +40,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
 
   // Only show remove button during playing phase when explicitly enabled
   const shouldShowRemoveButton = showRemoveButton && phase === 3;
-  const isBooked = ticket.status === 'booked' || ticket.bookingDetails?.playerName;
+  const isBooked = ticket.status === 'booked';
 
   // Fetch host phone number from Firebase
   useEffect(() => {
@@ -67,54 +67,37 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     fetchHostPhone();
   }, [currentGame]);
 
-  // Fetch player name based on ticket ID
+  // Find player name from the Players object
   useEffect(() => {
-    const fetchPlayerName = async () => {
-      if (!ticket || !ticket.id) return;
-
-      try {
-        // First check bookingDetails if available
-        if (ticket.bookingDetails?.playerName) {
-          setPlayerName(ticket.bookingDetails.playerName);
+    if (!ticket || !ticket.id) return;
+    
+    // First check bookings if available
+    if (currentGame?.activeTickets?.bookings) {
+      const booking = currentGame.activeTickets.bookings.find(
+        b => b && b.number && b.number.toString() === ticket.id.toString()
+      );
+      
+      if (booking && booking.playerName) {
+        setPlayerName(booking.playerName);
+        return;
+      }
+    }
+    
+    // Then check Players data
+    if (players) {
+      for (const playerId in players) {
+        const player = players[playerId];
+        const playerTickets = player.tickets || [];
+        
+        if (playerTickets.includes(ticket.id.toString())) {
+          setPlayerName(player.name);
           return;
         }
-
-        // Then check bookings array
-        if (currentGame?.activeTickets?.bookings) {
-          const booking = currentGame.activeTickets.bookings.find(
-            b => b && b.number && b.number.toString() === ticket.id.toString()
-          );
-          
-          if (booking && booking.playerName) {
-            setPlayerName(booking.playerName);
-            return;
-          }
-        }
-
-        // Then check Players path in Firebase
-        if (players) {
-          // Loop through player entries to find a match
-          for (const key in players) {
-            if (key.startsWith('player_')) {
-              const playerTickets = players[key].tickets || [];
-              // Check if this player has the current ticket
-              if (playerTickets.includes(ticket.id.toString())) {
-                setPlayerName(players[key].name || `Ticket #${ticket.id}`);
-                return;
-              }
-            }
-          }
-        }
-
-        // If all checks fail, set the player name to the ticket number
-        setPlayerName(`Ticket #${ticket.id}`);
-      } catch (error) {
-        console.error('Error fetching player name:', error);
-        setPlayerName(`Ticket #${ticket.id}`);
       }
-    };
-
-    fetchPlayerName();
+    }
+    
+    // Default to null if no player found
+    setPlayerName(null);
   }, [ticket, currentGame, players]);
 
   const ticketStats = useMemo(() => {
@@ -168,7 +151,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
                 </span>
               )}
             </div>
-            {playerName && !playerName.startsWith('Ticket #') && (
+            {playerName && (
               <span className="text-xs text-blue-100">
                 {playerName}
               </span>
@@ -251,7 +234,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
       {phase === 2 && isBooked && (
         <div className="w-full py-2 bg-gray-100 text-center rounded-b-xl">
           <span className="text-sm text-gray-700">
-            {playerName && !playerName.startsWith('Ticket #') ? `Booked by: ${playerName}` : 'Booked'}
+            {playerName ? `Booked by: ${playerName}` : 'Booked'}
           </span>
         </div>
       )}
