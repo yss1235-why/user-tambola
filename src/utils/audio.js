@@ -176,27 +176,31 @@ class AudioManager {
     this.lastAnnouncedPrize = null;
     this.announcementQueue = [];
     this.isProcessing = false;
-    this.synth = window.speechSynthesis;
+    this.synth = null;
     this.voices = [];
+    this.hasUserInteracted = false;
   }
 
   initialize() {
     if (this.initialized) return true;
 
     try {
-      if (!this.synth) {
+      // Initialize speech synthesis
+      if ('speechSynthesis' in window) {
+        this.synth = window.speechSynthesis;
+        
+        // Initialize voices
+        this.loadVoices();
+        if (this.synth.onvoiceschanged !== undefined) {
+          this.synth.onvoiceschanged = this.loadVoices.bind(this);
+        }
+        
+        this.initialized = true;
+        return true;
+      } else {
         console.error('Speech synthesis not supported');
         return false;
       }
-
-      // Initialize voices
-      this.loadVoices();
-      if (this.synth.onvoiceschanged !== undefined) {
-        this.synth.onvoiceschanged = this.loadVoices.bind(this);
-      }
-
-      this.initialized = true;
-      return true;
     } catch (error) {
       console.error('Failed to initialize audio systems:', error);
       return false;
@@ -204,6 +208,8 @@ class AudioManager {
   }
 
   loadVoices() {
+    if (!this.synth) return;
+    
     this.voices = this.synth.getVoices();
     // Prefer an English voice
     this.selectedVoice = this.voices.find(voice => 
@@ -219,19 +225,28 @@ class AudioManager {
     }
   }
 
+  setUserInteracted() {
+    this.hasUserInteracted = true;
+  }
+
   async queueAnnouncement(text, priority = 1) {
     if (this.isMuted || !text) return;
+
+    // Only add to queue if initialized and user has interacted
+    if (!this.initialized) {
+      this.initialize();
+    }
 
     this.announcementQueue.push({ text, priority });
     this.announcementQueue.sort((a, b) => b.priority - a.priority);
     
-    if (!this.isProcessing) {
+    if (this.hasUserInteracted && !this.isProcessing) {
       await this.processQueue();
     }
   }
 
   async processQueue() {
-    if (this.isProcessing || this.announcementQueue.length === 0) return;
+    if (this.isProcessing || this.announcementQueue.length === 0 || !this.hasUserInteracted) return;
 
     this.isProcessing = true;
 
@@ -249,7 +264,7 @@ class AudioManager {
 
   async speak(text) {
     return new Promise((resolve) => {
-      if (!this.synth || this.isMuted) {
+      if (!this.synth || this.isMuted || !this.hasUserInteracted) {
         resolve();
         return;
       }
@@ -318,10 +333,8 @@ const audioManager = new AudioManager();
 
 // Initialize audio on first user interaction
 const initializeAudio = () => {
-  const result = audioManager.initialize();
-  if (!result) {
-    console.warn('Audio initialization failed. Voice announcements may be unavailable.');
-  }
+  audioManager.initialize();
+  audioManager.setUserInteracted();
 };
 
 // Export public functions
