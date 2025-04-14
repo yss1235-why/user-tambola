@@ -5,7 +5,7 @@ import { useGame } from '../../context/GameContext';
 import { announceWinner } from '../../utils/winnersAudio';
 import confetti from '../../utils/confetti';
 
-// Prize configuration with visual elements (unchanged)
+// Prize configuration with visual elements
 const PRIZE_CONFIG = {
   quickFive: { 
     label: 'Quick Five',
@@ -15,8 +15,86 @@ const PRIZE_CONFIG = {
     confetti: true,
     sound: 'fanfare'
   },
-  // Other prize configurations - unchanged
-  // ...
+  topLine: { 
+    label: 'Top Line',
+    description: 'Complete the first line',
+    icon: '⬆️',
+    color: 'bg-blue-500',
+    confetti: true,
+    sound: 'win'
+  },
+  middleLine: { 
+    label: 'Middle Line',
+    description: 'Complete the middle line',
+    icon: '➡️',
+    color: 'bg-green-500',
+    confetti: true,
+    sound: 'win'
+  },
+  bottomLine: { 
+    label: 'Bottom Line',
+    description: 'Complete the bottom line',
+    icon: '⬇️',
+    color: 'bg-purple-500',
+    confetti: true,
+    sound: 'win'
+  },
+  corners: { 
+    label: 'Corners',
+    description: 'Mark all four corners',
+    icon: '🎯',
+    color: 'bg-pink-500',
+    confetti: true,
+    sound: 'win'
+  },
+  fullHouse: { 
+    label: 'Full House',
+    description: 'Complete the entire ticket',
+    icon: '👑',
+    color: 'bg-red-500',
+    confetti: true,
+    sound: 'jackpot'
+  },
+  secondFullHouse: { 
+    label: 'Second Full House',
+    description: 'Second player to complete the entire ticket',
+    icon: '🥈',
+    color: 'bg-amber-500',
+    confetti: true,
+    sound: 'jackpot'
+  },
+  starCorners: { 
+    label: 'Star Corners',
+    description: 'Mark the star pattern corners',
+    icon: '⭐',
+    color: 'bg-indigo-500',
+    confetti: true,
+    sound: 'win'
+  },
+  fullSheet: { 
+    label: 'Full Sheet',
+    description: 'Complete all tickets in a sheet',
+    icon: '📃',
+    color: 'bg-emerald-500',
+    confetti: true,
+    sound: 'jackpot'
+  },
+  halfSheet: { 
+    label: 'Half Sheet',
+    description: 'Complete half of the tickets in a sheet',
+    icon: '📄',
+    color: 'bg-cyan-500',
+    confetti: true,
+    sound: 'win'
+  }
+};
+
+// Default prize config for fallback
+const DEFAULT_PRIZE_CONFIG = {
+  label: 'Prize',
+  description: 'Prize winner',
+  icon: '🏆',
+  color: 'bg-blue-500'
 };
 
 const EnhancedWinnerAnnouncement = () => {
@@ -55,7 +133,7 @@ const EnhancedWinnerAnnouncement = () => {
         
         // Check if this player has the ticket we're looking for
         if (playerTickets.includes(ticketIdStr)) {
-          return player.name || "Player";
+          return player.name || `Player`;
         }
       }
     }
@@ -86,8 +164,67 @@ const EnhancedWinnerAnnouncement = () => {
     return "Player";
   };
 
-  // Rest of the component remains the same
-  // ...
+  // Play sound effect based on prize type
+  const playWinSound = (prizeType) => {
+    try {
+      // Only play sound if user has interacted with the page
+      if (!hasInteractedRef.current) return;
+      
+      const config = PRIZE_CONFIG[prizeType] || {};
+      const soundType = config.sound || 'win';
+      
+      // Reset audio
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      
+      // Set sound file based on type
+      switch(soundType) {
+        case 'jackpot':
+          audioRef.current.src = '/sounds/jackpot.mp3';
+          break;
+        case 'fanfare':
+          audioRef.current.src = '/sounds/fanfare.mp3';
+          break;
+        case 'win':
+        default:
+          audioRef.current.src = '/sounds/win.mp3';
+          break;
+      }
+      
+      // Play sound
+      audioRef.current.volume = 0.7;
+      audioRef.current.play().catch(err => console.log('Audio play error:', err));
+    } catch (error) {
+      console.error('Error playing sound:', error);
+    }
+  };
+
+  // Set up user interaction detection
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      hasInteractedRef.current = true;
+    };
+    
+    // Add event listeners for user interaction
+    document.addEventListener('click', handleUserInteraction, { once: true });
+    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+    
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, []);
+
+  // Trigger confetti animation
+  const triggerConfetti = (prizeType) => {
+    if (!hasInteractedRef.current) return;
+    
+    const config = PRIZE_CONFIG[prizeType] || {};
+    if (config.confetti) {
+      confetti.start();
+      setTimeout(() => confetti.stop(), 3000);
+    }
+  };
 
   // Check for new winners
   useEffect(() => {
@@ -163,8 +300,12 @@ const EnhancedWinnerAnnouncement = () => {
     setPreviousWinners(currentWinners);
   }, [currentGame?.gameState?.winners, phase]);
 
-  // The render code remains the same as the original
-  // ...
+  // Return null if there's no active announcement or it shouldn't be visible
+  if (!activeAnnouncement || !isVisible) return null;
+
+  // Make sure we have a valid prizeType before accessing PRIZE_CONFIG
+  const prizeType = activeAnnouncement?.prizeType || '';
+  const prizeConfig = PRIZE_CONFIG[prizeType] || DEFAULT_PRIZE_CONFIG;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
