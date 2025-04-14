@@ -241,43 +241,62 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
     };
   }, []);
 
-  // Find player name from different sources
+  // Improved findPlayerName function to handle array structure with null entries
   const findPlayerName = (ticketId, gameData) => {
-    // 1. Try to get from the ticket's booking details
-    const ticket = gameData.activeTickets?.tickets?.find(
-      t => t && t.id && t.id.toString() === ticketId.toString()
-    );
+    if (!ticketId || !gameData) return null;
     
-    if (ticket?.bookingDetails?.playerName) {
-      return ticket.bookingDetails.playerName;
-    }
+    // Convert to string for safer comparison
+    const ticketIdStr = ticketId.toString();
     
-    // 2. Try to get from the bookings array
+    // 1. Check bookings array, accounting for null entries
     if (gameData.activeTickets?.bookings) {
-      const booking = gameData.activeTickets.bookings.find(
-        b => b && b.number && b.number.toString() === ticketId.toString()
-      );
-      if (booking?.playerName) {
-        return booking.playerName;
+      for (let i = 0; i < gameData.activeTickets.bookings.length; i++) {
+        const booking = gameData.activeTickets.bookings[i];
+        if (booking && booking.number && booking.number.toString() === ticketIdStr) {
+          if (booking.playerName) {
+            return booking.playerName;
+          }
+        }
       }
     }
     
-    // 3. Try to get from the Players data
+    // 2. Check in players object directly
     if (gameData.players) {
-      for (const playerKey in gameData.players) {
-        if (playerKey.startsWith('player_')) {
-          const player = gameData.players[playerKey];
-          const playerTickets = player.tickets || [];
-          
-          if (playerTickets.includes(ticketId.toString())) {
-            return player.name || `Ticket #${ticketId}`;
+      for (const playerId in gameData.players) {
+        const player = gameData.players[playerId];
+        const playerTickets = player.tickets || [];
+        
+        // Check if this player has the ticket we're looking for
+        if (playerTickets.includes(ticketIdStr)) {
+          return player.name || `Ticket #${ticketId}`;
+        }
+      }
+    }
+    
+    // 3. Try to get from the ticket's booking details
+    if (gameData.activeTickets?.tickets) {
+      for (let i = 0; i < gameData.activeTickets.tickets.length; i++) {
+        const ticket = gameData.activeTickets.tickets[i];
+        if (ticket && ticket.id && ticket.id.toString() === ticketIdStr) {
+          if (ticket.bookingDetails?.playerName) {
+            return ticket.bookingDetails.playerName;
+          } else if (ticket.status === 'booked') {
+            // If ticket is booked but doesn't have player details, check again in bookings
+            if (gameData.activeTickets?.bookings) {
+              const booking = gameData.activeTickets.bookings.find(
+                b => b && b.number && b.number.toString() === ticketIdStr
+              );
+              if (booking && booking.playerName) {
+                return booking.playerName;
+              }
+            }
           }
         }
       }
     }
     
     // 4. Fallback to ticket number
-    return `Ticket #${ticketId}`;
+    return null;
   };
 
   useEffect(() => {
