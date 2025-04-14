@@ -18,7 +18,7 @@ const firebaseConfig = {
 };
 
 // Use the correct Host ID from your actual Firebase data
-const HOST_ID = "x4q2vWEh8hfdjLwoY8KzVwCD9dB2";
+const HOST_ID = "B8kbztcNrrXbvWYtlv3slaXJSyR2";
 
 // Initialize Firebase
 let app, database, analytics, auth;
