@@ -3,7 +3,7 @@ const appConfig = {
   // Firebase/Host Configuration - Default values (will be overridden by environment variables)
   firebase: {
     // Using the correct host ID from your Firebase data
-    hostId: "x4q2vWEh8hfdjLwoY8KzVwCD9dB2", // Your actual host ID
+    hostId: "B8kbztcNrrXbvWYtlv3slaXJSyR2", // Your actual host ID
   },
   
   // Application Text Configuration
