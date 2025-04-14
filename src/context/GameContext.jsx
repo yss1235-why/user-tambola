@@ -1,4 +1,4 @@
-// src/context/GameContext.jsx
+// src/context/GameContext.jsx - Fixed ticket loading
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { db, HOST_ID, databaseUtils } from '../config/firebase';
 import { useAuth } from './AuthContext';
@@ -39,6 +39,21 @@ export const GameProvider = ({ children, onError }) => {
     };
   }, []);
 
+  // Debug function to show ticket count
+  const logTicketCount = (tickets) => {
+    if (Array.isArray(tickets)) {
+      console.log(`Loaded ${tickets.length} tickets`);
+      
+      // Count available vs booked
+      const available = tickets.filter(t => t && t.status !== 'booked').length;
+      const booked = tickets.filter(t => t && t.status === 'booked').length;
+      
+      console.log(`Available: ${available}, Booked: ${booked}`);
+    } else {
+      console.log('No tickets or invalid tickets data');
+    }
+  };
+
   // Set up Firebase listeners
   useEffect(() => {
     // Skip if listeners are already active
@@ -58,6 +73,7 @@ export const GameProvider = ({ children, onError }) => {
             if (!isMounted.current) return;
             
             const rawGameData = snapshot.val();
+            console.log("Game data received:", rawGameData ? "Yes" : "No");
             
             if (rawGameData) {
               // Normalize the game data
@@ -101,6 +117,7 @@ export const GameProvider = ({ children, onError }) => {
             if (!isMounted.current) return;
             
             const bookingsData = snapshot.val();
+            console.log("Bookings data received:", bookingsData ? "Yes" : "No");
             
             // Provide an empty array if bookings is null
             const normalizedBookings = bookingsData || [];
@@ -123,14 +140,17 @@ export const GameProvider = ({ children, onError }) => {
         );
         
         // Tickets listener
+        console.log("Setting up tickets listener at:", `${BASE_PATH}/activeTickets/tickets`);
         unsubscribers.current.tickets = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/tickets`, 
           (snapshot) => {
             if (!isMounted.current) return;
             
             const rawTicketsData = snapshot.val();
+            console.log("Tickets data received:", rawTicketsData ? "Yes" : "No");
             
             // Normalize tickets (remove nulls, ensure proper format)
             const normalizedTickets = normalizeTickets(rawTicketsData);
+            logTicketCount(normalizedTickets);
             
             setGameState(prev => ({
               ...prev,
