@@ -1,11 +1,28 @@
 // src/components/game/WinnersNotification.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../../context/GameContext';
 
 const WinnersNotification = () => {
   const { currentGame } = useGame();
   const [notifications, setNotifications] = useState([]);
   const [previousWinners, setPreviousWinners] = useState({});
+  const hasInteractedRef = useRef(false);
+
+  // Set up user interaction detection
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      hasInteractedRef.current = true;
+    };
+    
+    // Add event listeners for user interaction
+    document.addEventListener('click', handleUserInteraction, { once: true });
+    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+    
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentGame?.gameState?.winners) return;
@@ -68,10 +85,12 @@ const WinnersNotification = () => {
     if (newNotifications.length > 0) {
       setNotifications(prev => [...prev, ...newNotifications]);
       
-      // Play audio announcement for each new winner
-      newNotifications.forEach(notification => {
-        announceWinner(notification.prizeType, notification.playerName);
-      });
+      // Play audio announcement for each new winner only if user has interacted
+      if (hasInteractedRef.current) {
+        newNotifications.forEach(notification => {
+          announceWinner(notification.prizeType, notification.playerName);
+        });
+      }
     }
     
     // Update previous winners state
@@ -124,8 +143,8 @@ const WinnersNotification = () => {
   };
   
   const announceWinner = (prizeType, playerName) => {
-    // Don't announce if speech synthesis is not available
-    if (!('speechSynthesis' in window)) return;
+    // Don't announce if speech synthesis is not available or user hasn't interacted
+    if (!('speechSynthesis' in window) || !hasInteractedRef.current) return;
     
     const prizeAnnouncements = {
       quickFive: `Quick Five correct and gone! Congratulations to ${playerName}!`,
