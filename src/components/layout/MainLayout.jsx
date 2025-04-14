@@ -1,14 +1,14 @@
 // src/components/layout/MainLayout.jsx
 import React, { useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useGame } from '../../context/GameContext';
 import Header from './Header';
 import EnhancedWinnerAnnouncement from '../game/EnhancedWinnerAnnouncement';
 import appConfig from '../../config/appConfig';
 
 const Footer = () => (
-  <footer className="bg-white border-t border-gray-200 py-4 mt-auto">
-    <div className="px-4 max-w-7xl mx-auto">
+  <footer className="bg-white border-t border-gray-200 py-3 sm:py-4 mt-auto">
+    <div className="px-3 sm:px-4 max-w-7xl mx-auto">
       <div className="flex flex-col items-center space-y-3">
         <p className="text-xs text-gray-500 text-center">
           {appConfig.appText.footerText.copyright}
@@ -40,7 +40,7 @@ const Footer = () => (
 
 const OfflineAlert = () => (
   <div className="bg-yellow-50 border-b border-yellow-100 animate-fade-in">
-    <div className="max-w-7xl mx-auto px-4 py-2">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2">
       <div className="flex items-center justify-center space-x-2">
         <svg 
           className="h-4 w-4 text-yellow-600 flex-shrink-0" 
@@ -82,7 +82,7 @@ const MainLayout = ({ children }) => {
       {/* Enhanced Winner Announcement Component */}
       {phase === 3 && <EnhancedWinnerAnnouncement />}
       
-      <main className="flex-grow px-4 py-4 sm:py-6">
+      <main className="flex-grow px-3 py-3 sm:px-4 sm:py-6">
         {children}
       </main>
       
