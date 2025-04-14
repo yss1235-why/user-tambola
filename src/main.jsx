@@ -11,7 +11,11 @@ if (!('speechSynthesis' in window)) {
 
 // Clear any lingering speech when page loads
 if ('speechSynthesis' in window) {
-  speechSynthesis.cancel();
+  try {
+    speechSynthesis.cancel();
+  } catch (error) {
+    console.warn('Error canceling speech synthesis:', error);
+  }
 }
 
 // Handle mobile viewport height issues
@@ -43,20 +47,56 @@ const requestNotificationPermission = async () => {
 // Service Worker Registration for PWA support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('Service Worker registered with scope:', registration.scope);
-      })
-      .catch(error => {
-        console.error('Service Worker registration failed:', error);
-      });
+    // Delay service worker registration to improve initial load performance
+    setTimeout(() => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('Service Worker registered with scope:', registration.scope);
+        })
+        .catch(error => {
+          console.error('Service Worker registration failed:', error);
+        });
+    }, 3000);
   });
 }
 
-// Request permission when user interacts with the page
-document.addEventListener('click', () => {
+// Global variable to track user interaction
+window.hasUserInteracted = false;
+
+// Set up global interaction tracking
+const handleUserInteraction = () => {
+  window.hasUserInteracted = true;
+  
+  // Request notification permission when user interacts
   requestNotificationPermission();
-}, { once: true });
+  
+  // Resume any suspended audio contexts
+  if (window.AudioContext || window.webkitAudioContext) {
+    const resumeAudioContexts = () => {
+      document.querySelectorAll('audio').forEach(audio => {
+        try {
+          if (audio.paused) {
+            audio.load();
+          }
+        } catch (e) {
+          console.warn('Error handling audio element:', e);
+        }
+      });
+    };
+    
+    // Try to resume audio contexts
+    try {
+      resumeAudioContexts();
+    } catch (e) {
+      console.warn('Error resuming audio contexts:', e);
+    }
+  }
+};
+
+// Track user interactions
+document.addEventListener('click', handleUserInteraction, { once: false });
+document.addEventListener('touchstart', handleUserInteraction, { once: false });
+document.addEventListener('keydown', handleUserInteraction, { once: false });
 
 // Add custom styles for animations and notifications
 const styleElement = document.createElement('style');
