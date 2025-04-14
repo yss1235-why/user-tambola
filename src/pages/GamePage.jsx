@@ -1,4 +1,4 @@
-// src/pages/GamePage.jsx - with enhanced winner announcements
+// src/pages/GamePage.jsx - with sound settings removed and improved ticket display
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { Link } from 'react-router-dom';
@@ -6,12 +6,9 @@ import NumberBoard from '../components/game/NumberBoard';
 import NumberDisplay from '../components/game/NumberDisplay';
 import WinnersDisplay from '../components/game/WinnersDisplay';
 import TicketSearch from '../components/game/TicketSearch';
-import EnhancedWinnerAnnouncement from '../components/game/EnhancedWinnerAnnouncement';
-
-// Game control components being reused from existing code
 import TicketCard from '../components/game/TicketCard';
 
-// No Game Available Component (reusing from your existing code)
+// No Game Available Component (reused from existing code)
 const NoGameAvailable = () => {
   return (
     <div className="max-w-lg mx-auto bg-white rounded-lg shadow-md p-8 text-center">
@@ -41,83 +38,44 @@ const NoGameAvailable = () => {
   );
 };
 
-// Audio Controls Component 
-const AudioControls = () => {
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [effectsEnabled, setEffectsEnabled] = useState(true);
-  const [volume, setVolume] = useState(0.7);
+// Available Tickets Grid Component
+const AvailableTicketsGrid = () => {
+  const { currentGame, phase } = useGame();
+  const [tickets, setTickets] = useState([]);
 
-  const handleSoundToggle = () => {
-    const newState = !soundEnabled;
-    setSoundEnabled(newState);
-    // Use the existing audio utilities
-    setMuted(!newState);
-    setWinnersAudioMuted(!newState);
-  };
+  useEffect(() => {
+    // Extract tickets from game data
+    if (currentGame?.activeTickets?.tickets) {
+      // Filter to only show available tickets (not booked)
+      const availableTickets = currentGame.activeTickets.tickets.filter(
+        ticket => ticket && ticket.status !== 'booked'
+      );
+      setTickets(availableTickets);
+    }
+  }, [currentGame?.activeTickets?.tickets]);
 
-  const handleEffectsToggle = () => {
-    const newState = !effectsEnabled;
-    setEffectsEnabled(newState);
-    setSoundEffectsEnabled(newState);
-  };
-
-  const handleVolumeChange = (e) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    setWinnersAudioVolume(newVolume);
-  };
+  if (!tickets || tickets.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6 text-center">
+        <p className="text-gray-600">No available tickets found.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-      <h3 className="text-sm font-medium text-gray-800 mb-3">Sound Settings</h3>
-      
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Voice Announcements</span>
-          <button
-            onClick={handleSoundToggle}
-            className={`relative inline-flex items-center h-6 rounded-full w-11 ${
-              soundEnabled ? 'bg-blue-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`inline-block w-4 h-4 transform transition ${
-                soundEnabled ? 'translate-x-6' : 'translate-x-1'
-              } rounded-full bg-white`}
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="px-4 py-3 bg-blue-600 text-white">
+        <h2 className="font-semibold">Available Tickets ({tickets.length})</h2>
+      </div>
+      <div className="p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {tickets.map(ticket => (
+            <TicketCard 
+              key={ticket.id} 
+              ticket={ticket}
+              showRemoveButton={false}
             />
-          </button>
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Sound Effects</span>
-          <button
-            onClick={handleEffectsToggle}
-            className={`relative inline-flex items-center h-6 rounded-full w-11 ${
-              effectsEnabled ? 'bg-blue-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`inline-block w-4 h-4 transform transition ${
-                effectsEnabled ? 'translate-x-6' : 'translate-x-1'
-              } rounded-full bg-white`}
-            />
-          </button>
-        </div>
-        
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Volume</span>
-            <span className="text-xs text-gray-500">{Math.round(volume * 100)}%</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            value={volume}
-            onChange={handleVolumeChange}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-          />
+          ))}
         </div>
       </div>
     </div>
@@ -131,7 +89,6 @@ const GamePage = () => {
     phase,
     loading,
     error,
-    tickets,
     isPlayingPhase
   } = useGame();
 
@@ -170,45 +127,40 @@ const GamePage = () => {
   }
 
   return (
-    <>
-      {/* Include enhanced winner announcement component */}
-      <EnhancedWinnerAnnouncement />
-      
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Game Info */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Number Display */}
-            {isPlayingPhase ? <NumberDisplay /> : null}
-            
-            {/* Winners Display */}
-            <WinnersDisplay />
-            
-            {/* Number Board - Only show in playing phase */}
-            {isPlayingPhase ? <NumberBoard /> : null}
-          </div>
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Game Info */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Number Display */}
+          {isPlayingPhase ? <NumberDisplay /> : null}
           
-          {/* Right Column - Tickets & Settings */}
-          <div className="space-y-6">
-            {/* Audio Controls */}
-            <AudioControls />
-            
-            {/* Ticket Search */}
-            <TicketSearch />
-          </div>
+          {/* Winners Display */}
+          <WinnersDisplay />
+          
+          {/* Number Board - Only show in playing phase */}
+          {isPlayingPhase ? <NumberBoard /> : null}
+          
+          {/* Available Tickets - Only show in booking phase */}
+          {phase === 2 && <AvailableTicketsGrid />}
         </div>
         
-        {/* Refresh Button */}
-        <div className="text-center mt-6">
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded transition-colors"
-          >
-            Refresh Game Data
-          </button>
+        {/* Right Column - Tickets & Settings */}
+        <div className="space-y-6">
+          {/* Ticket Search */}
+          <TicketSearch />
         </div>
       </div>
-    </>
+      
+      {/* Refresh Button */}
+      <div className="text-center mt-6">
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded transition-colors"
+        >
+          Refresh Game Data
+        </button>
+      </div>
+    </div>
   );
 };
 
