@@ -73,8 +73,8 @@ export const GameProvider = ({ children, onError }) => {
       console.log(`Loaded ${tickets.length} tickets`);
       
       // Count available vs booked
-      const available = tickets.filter(t => t && t.status !== 'booked').length;
-      const booked = tickets.filter(t => t && t.status === 'booked').length;
+      const available = tickets.filter(t => t && t.status !== 'booked' && !t.bookingDetails?.playerName).length;
+      const booked = tickets.filter(t => t && (t.status === 'booked' || t.bookingDetails?.playerName)).length;
       
       console.log(`Available: ${available}, Booked: ${booked}`);
     } else {
