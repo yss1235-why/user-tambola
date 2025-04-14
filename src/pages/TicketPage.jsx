@@ -197,7 +197,7 @@ const TicketPage = () => {
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => navigate('/')}
-            className="btn-primary"
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
           >
             Return to Game
           </button>
@@ -288,7 +288,7 @@ const TicketPage = () => {
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={() => navigate('/')}
-          className="btn-secondary flex-1 flex items-center justify-center"
+          className="px-4 py-2 bg-gray-100 text-gray-800 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors shadow-sm active:transform active:scale-95 flex-1 flex items-center justify-center"
         >
           <svg 
             className="h-4 w-4 mr-2" 
@@ -311,7 +311,7 @@ const TicketPage = () => {
               const message = `I want to book ticket ${ticketDetails.id}`;
               window.open(`https://wa.me/?text=${encodeURIComponent(message)}`);
             }}
-            className="btn-primary flex-1 flex items-center justify-center"
+            className="px-4 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm active:transform active:scale-95 flex-1 flex items-center justify-center"
           >
             <svg 
               className="h-4 w-4 mr-2" 
