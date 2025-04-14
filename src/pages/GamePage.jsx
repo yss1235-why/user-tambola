@@ -1,4 +1,4 @@
-// src/pages/GamePage.jsx - with sound settings removed and improved ticket display
+// src/pages/GamePage.jsx - with improved ticket display
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { Link } from 'react-router-dom';
@@ -8,7 +8,7 @@ import WinnersDisplay from '../components/game/WinnersDisplay';
 import TicketSearch from '../components/game/TicketSearch';
 import TicketCard from '../components/game/TicketCard';
 
-// No Game Available Component (reused from existing code)
+// No Game Available Component
 const NoGameAvailable = () => {
   return (
     <div className="max-w-lg mx-auto bg-white rounded-lg shadow-md p-8 text-center">
