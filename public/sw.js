@@ -1,11 +1,16 @@
-// public/sw.js
-const CACHE_NAME = 'tambola-game-v1';
+// public/sw.js - Updated with sound asset caching
+const CACHE_NAME = 'tambola-game-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/vite.svg',
   '/assets/index.css',
   '/assets/index.js',
+  // Sound assets
+  '/sounds/win.mp3',
+  '/sounds/jackpot.mp3',
+  '/sounds/fanfare.mp3',
+  '/sounds/applause.mp3'
 ];
 
 // Install event - cache static assets
@@ -13,7 +18,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Service Worker: Caching static assets');
+        console.log('Service Worker: Caching static assets and sound effects');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => self.skipWaiting())
@@ -39,7 +44,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - network first, cache fallback strategy
+// Fetch event with special handling for sound files
 self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
@@ -51,6 +56,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Special handling for sound files - cache first strategy for better performance
+  if (event.request.url.includes('/sounds/')) {
+    event.respondWith(
+      caches.match(event.request)
+        .then((response) => {
+          if (response) {
+            // Return from cache if available
+            return response;
+          }
+          
+          // Otherwise fetch from network and cache
+          return fetch(event.request)
+            .then((networkResponse) => {
+              // Clone the response for caching
+              const responseToCache = networkResponse.clone();
+              
+              caches.open(CACHE_NAME)
+                .then((cache) => {
+                  cache.put(event.request, responseToCache);
+                });
+                
+              return networkResponse;
+            });
+        })
+    );
+    return;
+  }
+
+  // Normal network-first strategy for other resources
   event.respondWith(
     fetch(event.request)
       .then((response) => {
