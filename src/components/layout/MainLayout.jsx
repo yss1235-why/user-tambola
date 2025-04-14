@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useGame } from '../../context/GameContext';
 import Header from './Header';
+import EnhancedWinnerAnnouncement from '../game/EnhancedWinnerAnnouncement';
 import appConfig from '../../config/appConfig';
 
 const Footer = () => (
@@ -64,7 +65,7 @@ const OfflineAlert = () => (
 
 const MainLayout = ({ children }) => {
   const location = useLocation();
-  const { currentGame } = useGame();
+  const { currentGame, phase } = useGame();
 
   // Scroll to top on route change
   useEffect(() => {
@@ -77,6 +78,9 @@ const MainLayout = ({ children }) => {
       
       {/* Offline warning */}
       {!navigator.onLine && <OfflineAlert />}
+      
+      {/* Enhanced Winner Announcement Component */}
+      {phase === 3 && <EnhancedWinnerAnnouncement />}
       
       <main className="flex-grow px-4 py-4 sm:py-6">
         {children}
