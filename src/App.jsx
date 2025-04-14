@@ -1,32 +1,19 @@
 // src/App.jsx
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense, useState, useEffect } from 'react';
 import { GameProvider } from './context/GameContext';
 import { AuthProvider } from './context/AuthContext';
-import LoadingScreen from './components/common/LoadingScreen';
-import Home from './pages/Home';
-import BookTicket from './pages/BookTicket';
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import HostLogin from './pages/host/HostLogin';
-import HostDashboard from './pages/host/HostDashboard';
-import TicketView from './pages/TicketView';
-import NotFound from './pages/NotFound';
+import appConfig from './config/appConfig';
+import AppRouter from './routes/AppRouter';
 
-// App theme configuration
-const appTheme = {
-  colors: {
-    primary: '#1D4ED8', // blue-700
-    secondary: '#F59E0B', // amber-500
-    accent: '#EC4899', // pink-500
-    background: '#F9FAFB', // gray-50
-    text: '#111827' // gray-900
-  },
-  fonts: {
-    heading: '"Inter", system-ui, sans-serif',
-    body: '"Inter", system-ui, sans-serif'
-  }
-};
+// Simple loading component instead of importing from another file
+const SimpleLoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="flex flex-col items-center space-y-4">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <p className="mt-4 text-gray-600">{appConfig.appText.loadingText || 'Loading...'}</p>
+    </div>
+  </div>
+);
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -52,50 +39,18 @@ function App() {
     initializeApp();
   }, []);
 
-  // Add global theme variables to CSS
-  useEffect(() => {
-    const root = document.documentElement;
-    
-    // Set CSS variables
-    Object.entries(appTheme.colors).forEach(([key, value]) => {
-      root.style.setProperty(`--color-${key}`, value);
-    });
-    
-    // Set font variables
-    Object.entries(appTheme.fonts).forEach(([key, value]) => {
-      root.style.setProperty(`--font-${key}`, value);
-    });
-  }, []);
-
   if (isLoading) {
-    return <LoadingScreen />;
+    return <SimpleLoadingScreen />;
   }
 
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <GameProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/book" element={<BookTicket />} />
-            <Route path="/ticket/:ticketId" element={<TicketView />} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
-            
-            {/* Host Routes */}
-            <Route path="/host/login" element={<HostLogin />} />
-            <Route path="/host/dashboard/*" element={<HostDashboard />} />
-            
-            {/* Fallback Routes */}
-            <Route path="/404" element={<NotFound />} />
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </Routes>
-        </GameProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <AuthProvider>
+      <GameProvider>
+        <Suspense fallback={<SimpleLoadingScreen />}>
+          <AppRouter />
+        </Suspense>
+      </GameProvider>
+    </AuthProvider>
   );
 }
 
