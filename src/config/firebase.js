@@ -17,9 +17,8 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-ABCDEFGHIJ"
 };
 
-// Use a correct Host ID - We'll use a public demo host instead of the one that's causing permission errors
-// This is the key fix
-const HOST_ID = "public-demo-host";
+// Use the correct Host ID from your actual Firebase data
+const HOST_ID = "x4q2vWEh8hfdjLwoY8KzVwCD9dB2";
 
 // Initialize Firebase
 let app, database, analytics, auth;
@@ -31,7 +30,6 @@ try {
   console.log('Firebase initialized with project:', firebaseConfig.projectId);
 } catch (error) {
   console.error('Firebase initialization error:', error);
-  // Set up minimal implementations when Firebase fails
   database = { app: null, ref: () => ({}) };
   auth = { 
     currentUser: null, 
