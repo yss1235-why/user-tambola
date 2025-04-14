@@ -1,4 +1,4 @@
-// src/context/GameContext.jsx - Fixed ticket loading
+// src/context/GameContext.jsx - Improved ticket loading
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { db, HOST_ID, databaseUtils } from '../config/firebase';
 import { useAuth } from './AuthContext';
