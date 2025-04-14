@@ -7,7 +7,7 @@ import { formatTicketForDisplay, checkTicketPrizes } from '../utils/ticketUtils'
 const PrizeStatus = ({ wonPrizes }) => {
   if (!wonPrizes.length) {
     return (
-      <div className="bg-gray-50 rounded-lg p-4 text-center">
+      <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-center">
         <p className="text-sm text-gray-600">No prizes won yet. Keep playing!</p>
       </div>
     );
@@ -25,7 +25,7 @@ const PrizeStatus = ({ wonPrizes }) => {
   };
 
   return (
-    <div className="bg-green-50 rounded-lg p-4">
+    <div className="bg-green-50 rounded-lg p-3 sm:p-4">
       <h3 className="text-base font-semibold text-green-800 mb-3">
         Congratulations!
       </h3>
@@ -116,17 +116,9 @@ const TicketPage = () => {
       return;
     }
 
-    // Find the ticket in the tickets array (accounting for null entries)
-    let ticket = null;
-    if (Array.isArray(currentGame.activeTickets.tickets)) {
-      for (let i = 0; i < currentGame.activeTickets.tickets.length; i++) {
-        const t = currentGame.activeTickets.tickets[i];
-        if (t && t.id && t.id.toString() === ticketId) {
-          ticket = t;
-          break;
-        }
-      }
-    }
+    const ticket = currentGame.activeTickets.tickets.find(
+      t => t && t.id && t.id.toString() === ticketId
+    );
 
     if (!ticket) {
       setError('Ticket not found');
@@ -134,46 +126,6 @@ const TicketPage = () => {
       return;
     }
 
-    // Find player booking information (accounting for null entries)
-    let playerName = null;
-    let bookingDetails = null;
-
-    // Check in bookings array
-    if (Array.isArray(currentGame.activeTickets.bookings)) {
-      for (let i = 0; i < currentGame.activeTickets.bookings.length; i++) {
-        const booking = currentGame.activeTickets.bookings[i];
-        if (booking && booking.number && booking.number.toString() === ticketId) {
-          playerName = booking.playerName;
-          bookingDetails = {
-            playerName: booking.playerName,
-            timestamp: booking.timestamp
-          };
-          break;
-        }
-      }
-    }
-
-    // Check in players object
-    if (!playerName && currentGame.players) {
-      for (const playerId in currentGame.players) {
-        const player = currentGame.players[playerId];
-        if (player.tickets && player.tickets.includes(ticketId.toString())) {
-          playerName = player.name;
-          bookingDetails = {
-            playerName: player.name,
-            timestamp: player.bookingTime
-          };
-          break;
-        }
-      }
-    }
-
-    // If we found booking details, add them to the ticket
-    if (bookingDetails) {
-      ticket.bookingDetails = bookingDetails;
-    }
-
-    // Format the ticket with called numbers
     const formattedTicket = formatTicketForDisplay(ticket, calledNumbers);
     setTicketDetails(formattedTicket);
     setLoading(false);
@@ -192,12 +144,12 @@ const TicketPage = () => {
 
   if (error) {
     return (
-      <div className="max-w-md mx-auto py-8">
+      <div className="max-w-md mx-auto py-6 sm:py-8 px-3 sm:px-0">
         <div className="bg-red-50 rounded-lg p-4 text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => navigate('/')}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+            className="btn-primary"
           >
             Return to Game
           </button>
@@ -206,16 +158,18 @@ const TicketPage = () => {
     );
   }
 
-  if (!ticketDetails) return null;
+  if (!ticketDetails) {
+    return null;
+  }
 
   const wonPrizes = checkTicketPrizes(ticketDetails, calledNumbers);
   const playerName = ticketDetails.bookingDetails?.playerName || 'Unbooked Ticket';
 
   return (
-    <div className="max-w-lg mx-auto space-y-4 animate-fade-in">
+    <div className="max-w-lg mx-auto space-y-4 animate-fade-in px-3 sm:px-0">
       {/* Ticket Header */}
       <div className="card shadow-sm">
-        <div className="p-4 flex justify-between items-center border-b border-gray-100">
+        <div className="p-3 sm:p-4 flex justify-between items-center border-b border-gray-100">
           <div>
             <h1 className="text-lg font-bold text-gray-900">
               Ticket #{ticketDetails.id}
@@ -232,8 +186,8 @@ const TicketPage = () => {
         </div>
 
         {/* Ticket Grid */}
-        <div className="p-3 bg-gray-50">
-          <div className="grid grid-rows-3 gap-2">
+        <div className="p-2 sm:p-3 bg-gray-50">
+          <div className="grid grid-rows-3 gap-1 sm:gap-2">
             {ticketDetails.numbers.map((row, rowIndex) => (
               <div key={rowIndex} className="grid grid-cols-9 gap-1">
                 {row.map((cell, colIndex) => (
@@ -249,7 +203,7 @@ const TicketPage = () => {
 
         {/* Progress Section */}
         {phase === 3 && (
-          <div className="px-4 py-3 border-t border-gray-100">
+          <div className="px-3 sm:px-4 py-3 border-t border-gray-100">
             <ProgressBar
               completed={ticketDetails.status.matchedNumbers}
               total={15}
@@ -265,7 +219,7 @@ const TicketPage = () => {
 
       {/* Booking Details */}
       {ticketDetails.bookingDetails && (
-        <div className="card shadow-sm p-4">
+        <div className="card shadow-sm p-3 sm:p-4">
           <h2 className="text-base font-semibold text-gray-900 mb-3">
             Booking Details
           </h2>
@@ -288,7 +242,7 @@ const TicketPage = () => {
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={() => navigate('/')}
-          className="px-4 py-2 bg-gray-100 text-gray-800 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors shadow-sm active:transform active:scale-95 flex-1 flex items-center justify-center"
+          className="btn-secondary flex-1 flex items-center justify-center"
         >
           <svg 
             className="h-4 w-4 mr-2" 
@@ -311,7 +265,7 @@ const TicketPage = () => {
               const message = `I want to book ticket ${ticketDetails.id}`;
               window.open(`https://wa.me/?text=${encodeURIComponent(message)}`);
             }}
-            className="px-4 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm active:transform active:scale-95 flex-1 flex items-center justify-center"
+            className="btn-primary flex-1 flex items-center justify-center"
           >
             <svg 
               className="h-4 w-4 mr-2" 
