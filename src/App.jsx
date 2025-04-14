@@ -1,4 +1,4 @@
-// src/App.jsx - Fix loading screen
+// src/App.jsx
 import React, { Suspense, useState, useEffect } from 'react';
 import { GameProvider } from './context/GameContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -28,7 +28,7 @@ const AppContent = () => {
     document.title = appConfig.appText.websiteTitle;
   }, []);
 
-  // Set a timeout for loading to avoid infinite spinner
+  // Set a timeout for loading
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (authLoading) {
@@ -39,11 +39,18 @@ const AppContent = () => {
     return () => clearTimeout(timeoutId);
   }, [authLoading]);
 
+  // Handle game connection error
+  const handleGameError = (error) => {
+    console.error("Game connection error:", error);
+    setConnectionError(error);
+  };
+
   // Handle retry
   const handleRetryConnection = () => {
     refreshAuth();
     setConnectionError(null);
     setLoadingTimeout(false);
+    window.location.reload(); // Force reload for a clean start
   };
 
   // If loading timeout occurred, show retry button
@@ -96,18 +103,11 @@ const AppContent = () => {
               {authError}
             </p>
             <button
-              onClick={refreshAuth}
+              onClick={handleRetryConnection}
               className="px-6 py-2 bg-blue-500 text-white rounded-md 
                       hover:bg-blue-600 transition-colors duration-200"
             >
               Retry Connection
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-6 py-2 bg-gray-200 text-gray-800 rounded-md 
-                      hover:bg-gray-300 transition-colors duration-200"
-            >
-              Reload Page
             </button>
           </div>
         </div>
@@ -134,13 +134,6 @@ const AppContent = () => {
             >
               Retry Connection
             </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-6 py-2 bg-gray-200 text-gray-800 rounded-md 
-                      hover:bg-gray-300 transition-colors duration-200"
-            >
-              Reload Page
-            </button>
           </div>
         </div>
       </div>
@@ -149,7 +142,7 @@ const AppContent = () => {
 
   // Normal application rendering - proceed even if auth failed
   return (
-    <GameProvider onError={setConnectionError}>
+    <GameProvider onError={handleGameError}>
       <div className="min-h-screen bg-gray-50">
         <NetworkStatus />
         <Suspense fallback={<LoadingScreen />}>
