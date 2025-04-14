@@ -1,7 +1,7 @@
 // src/components/game/WinnersDisplay.jsx
 import React, { useEffect, useState } from 'react';
 import { useGame } from '../../context/GameContext';
-import { announcePrize } from '../../utils/audio';
+import { announceNumber } from '../../utils/audio';
 
 const PRIZE_CONFIG = {
   quickFive: { 
@@ -217,11 +217,51 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
   const gameContext = useGame();
   const [latestWinner, setLatestWinner] = useState(null);
   const [processedWinners, setProcessedWinners] = useState([]);
+  const [previousWinners, setPreviousWinners] = useState({});
   const [enabledPrizes, setEnabledPrizes] = useState([]);
   const [expanded, setExpanded] = useState(false);
   
   // Sheet prizes to be consolidated
   const SHEET_PRIZES = ['halfSheet', 'fullSheet'];
+
+  // Find player name from different sources
+  const findPlayerName = (ticketId, gameData) => {
+    // 1. Try to get from the ticket's booking details
+    const ticket = gameData.activeTickets?.tickets?.find(
+      t => t && t.id && t.id.toString() === ticketId.toString()
+    );
+    
+    if (ticket?.bookingDetails?.playerName) {
+      return ticket.bookingDetails.playerName;
+    }
+    
+    // 2. Try to get from the bookings array
+    if (gameData.activeTickets?.bookings) {
+      const booking = gameData.activeTickets.bookings.find(
+        b => b && b.number && b.number.toString() === ticketId.toString()
+      );
+      if (booking?.playerName) {
+        return booking.playerName;
+      }
+    }
+    
+    // 3. Try to get from the Players data
+    if (gameData.players) {
+      for (const playerKey in gameData.players) {
+        if (playerKey.startsWith('player_')) {
+          const player = gameData.players[playerKey];
+          const playerTickets = player.tickets || [];
+          
+          if (playerTickets.includes(ticketId.toString())) {
+            return player.name || `Ticket #${ticketId}`;
+          }
+        }
+      }
+    }
+    
+    // 4. Fallback to ticket number
+    return `Ticket #${ticketId}`;
+  };
 
   useEffect(() => {
     // Determine which data to use
@@ -274,33 +314,8 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
       // Handle sheet prizes differently
       if (SHEET_PRIZES.includes(prizeType)) {
         ticketIds.forEach(ticketId => {
-          let playerName = 'Unknown Player';
-          let timestamp = Date.now();
-
-          // Get player name - different for previous game vs current game
-          if (showPrevious && previousGameData) {
-            // Look in the playerMap from previous game data
-            playerName = previousGameData.playerMap?.[ticketId] || 'Unknown Player';
-          } else {
-            // Current game - look in the active tickets
-            const ticket = gameData.activeTickets?.tickets?.find(
-              t => t && t.id && t.id.toString() === ticketId.toString()
-            );
-            
-            if (ticket) {
-              if (ticket.bookingDetails?.playerName) {
-                playerName = ticket.bookingDetails.playerName;
-                timestamp = ticket.bookingDetails.timestamp || timestamp;
-              } else if (gameData.activeTickets?.bookings) {
-                const booking = gameData.activeTickets.bookings.find(
-                  b => b && b.number && b.number.toString() === ticketId.toString()
-                );
-                if (booking && booking.playerName) {
-                  playerName = booking.playerName;
-                }
-              }
-            }
-          }
+          const playerName = findPlayerName(ticketId, gameData);
+          const timestamp = Date.now();
           
           // Add to sheet winners
           sheetWinners[prizeType].tickets.push({
@@ -317,33 +332,8 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
       } else {
         // Handle regular (non-sheet) prizes
         ticketIds.forEach(ticketId => {
-          let playerName = 'Unknown Player';
-          let timestamp = Date.now();
-
-          // Get player name - different for previous game vs current game
-          if (showPrevious && previousGameData) {
-            // Look in the playerMap from previous game data
-            playerName = previousGameData.playerMap?.[ticketId] || 'Unknown Player';
-          } else {
-            // Current game - look in the active tickets
-            const ticket = gameData.activeTickets?.tickets?.find(
-              t => t && t.id && t.id.toString() === ticketId.toString()
-            );
-            
-            if (ticket) {
-              if (ticket.bookingDetails?.playerName) {
-                playerName = ticket.bookingDetails.playerName;
-                timestamp = ticket.bookingDetails.timestamp || timestamp;
-              } else if (gameData.activeTickets?.bookings) {
-                const booking = gameData.activeTickets.bookings.find(
-                  b => b && b.number && b.number.toString() === ticketId.toString()
-                );
-                if (booking && booking.playerName) {
-                  playerName = booking.playerName;
-                }
-              }
-            }
-          }
+          const playerName = findPlayerName(ticketId, gameData);
+          const timestamp = Date.now();
           
           winnersList.push({
             prizeType,
@@ -390,14 +380,15 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
            newLatestWinner.ticketId !== latestWinner.ticketId))) {
         // Announce the winner if we're in playing phase
         if (gameContext.phase === 3) {
-          announcePrize(newLatestWinner.prizeType, newLatestWinner.playerName);
+          announceNumber(newLatestWinner.prizeType, newLatestWinner.playerName);
         }
         setLatestWinner(newLatestWinner);
       }
     }
   }, [gameContext.currentGame?.gameState?.winners, gameContext.currentGame?.activeTickets?.tickets, 
-      gameContext.currentGame?.activeTickets?.bookings, gameContext.currentGame?.settings?.prizes, 
-      previousGameData, currentGame, showPrevious, gameContext.phase, latestWinner]);
+      gameContext.currentGame?.activeTickets?.bookings, gameContext.currentGame?.settings?.prizes,
+      gameContext.currentGame?.players, previousGameData, currentGame, showPrevious, 
+      gameContext.phase, latestWinner]);
 
   const headerTitle = showPrevious ? 
     "Previous Winners" : 
