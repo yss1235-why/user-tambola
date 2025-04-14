@@ -1,5 +1,5 @@
 // src/context/GameContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { db, HOST_ID, databaseUtils } from '../config/firebase';
 import { useAuth } from './AuthContext';
 import appConfig from '../config/appConfig';
@@ -22,19 +22,30 @@ export const GameProvider = ({ children, onError }) => {
     tickets: [],
     bookings: {},
   });
-  const [listenersInitialized, setListenersInitialized] = useState(false);
+  
+  // Use refs to track mounted state and prevent cleanup on re-renders
+  const isMounted = useRef(true);
+  const listenersActive = useRef(false);
+  const unsubscribers = useRef({
+    game: null,
+    bookings: null,
+    tickets: null
+  });
 
-  // Set up Firebase listeners once per mount
+  // Set isMounted to false when component unmounts
   useEffect(() => {
-    if (listenersInitialized) return;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Set up Firebase listeners
+  useEffect(() => {
+    // Skip if listeners are already active
+    if (listenersActive.current) return;
     
-    // Don't wait for auth to be completed - proceed anyway
     console.log('Setting up Firebase listeners with Host ID:', HOST_ID);
-    
-    // Cleanup function for all listeners
-    let gameUnsubscribe = null;
-    let bookingsUnsubscribe = null;
-    let ticketsUnsubscribe = null;
+    listenersActive.current = true;
     
     // Set up async function to handle listeners
     const setupListeners = async () => {
@@ -42,8 +53,10 @@ export const GameProvider = ({ children, onError }) => {
         console.log("Setting up game data listener");
         
         // Game data listener
-        gameUnsubscribe = await databaseUtils.listenToPath(BASE_PATH, 
+        unsubscribers.current.game = await databaseUtils.listenToPath(BASE_PATH, 
           (snapshot) => {
+            if (!isMounted.current) return;
+            
             const rawGameData = snapshot.val();
             
             if (rawGameData) {
@@ -60,27 +73,33 @@ export const GameProvider = ({ children, onError }) => {
                 lastCalledNumber: gameData.numberSystem?.currentNumber,
               }));
             } else {
-              setGameState(prev => ({
-                ...prev,
-                loading: false,
-                error: 'No game data available',
-              }));
+              if (isMounted.current) {
+                setGameState(prev => ({
+                  ...prev,
+                  loading: false,
+                  error: 'No game data available',
+                }));
+              }
             }
           },
           (error) => {
             console.error('Error fetching game data:', error);
-            setGameState(prev => ({
-              ...prev,
-              loading: false,
-              error: 'Failed to connect to game server: ' + error.message,
-            }));
-            if (onError) onError('Failed to connect to game server: ' + error.message);
+            if (isMounted.current) {
+              setGameState(prev => ({
+                ...prev,
+                loading: false,
+                error: 'Failed to connect to game server: ' + error.message,
+              }));
+              if (onError) onError('Failed to connect to game server: ' + error.message);
+            }
           }
         );
         
         // Bookings listener
-        bookingsUnsubscribe = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/bookings`, 
+        unsubscribers.current.bookings = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/bookings`, 
           (snapshot) => {
+            if (!isMounted.current) return;
+            
             const bookingsData = snapshot.val();
             
             // Provide an empty array if bookings is null
@@ -93,17 +112,21 @@ export const GameProvider = ({ children, onError }) => {
           },
           (error) => {
             console.error('Error fetching bookings:', error);
-            // Provide empty bookings array on error, but don't set main error
-            setGameState(prev => ({
-              ...prev,
-              bookings: []
-            }));
+            // Provide empty bookings array on error
+            if (isMounted.current) {
+              setGameState(prev => ({
+                ...prev,
+                bookings: []
+              }));
+            }
           }
         );
         
         // Tickets listener
-        ticketsUnsubscribe = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/tickets`, 
+        unsubscribers.current.tickets = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/tickets`, 
           (snapshot) => {
+            if (!isMounted.current) return;
+            
             const rawTicketsData = snapshot.val();
             
             // Normalize tickets (remove nulls, ensure proper format)
@@ -116,38 +139,58 @@ export const GameProvider = ({ children, onError }) => {
           },
           (error) => {
             console.error('Error fetching tickets:', error);
-            // Provide empty tickets array on error, but don't set main error
-            setGameState(prev => ({
-              ...prev,
-              tickets: []
-            }));
+            // Provide empty tickets array on error
+            if (isMounted.current) {
+              setGameState(prev => ({
+                ...prev,
+                tickets: []
+              }));
+            }
           }
         );
         
-        setListenersInitialized(true);
         console.log("All Firebase listeners set up successfully");
       } catch (error) {
         console.error("Error setting up game listeners:", error);
-        setGameState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Error initializing game data: ' + error.message,
-        }));
-        if (onError) onError('Error initializing game data: ' + error.message);
+        if (isMounted.current) {
+          setGameState(prev => ({
+            ...prev,
+            loading: false,
+            error: 'Error initializing game data: ' + error.message,
+          }));
+          if (onError) onError('Error initializing game data: ' + error.message);
+        }
       }
     };
     
     // Set up listeners
     setupListeners();
     
-    // Clean up all listeners on unmount
+    // Clean up function to properly remove listeners on unmount
     return () => {
       console.log("Cleaning up Firebase listeners");
-      if (gameUnsubscribe) gameUnsubscribe();
-      if (bookingsUnsubscribe) bookingsUnsubscribe();
-      if (ticketsUnsubscribe) ticketsUnsubscribe();
+      if (unsubscribers.current.game) unsubscribers.current.game();
+      if (unsubscribers.current.bookings) unsubscribers.current.bookings();
+      if (unsubscribers.current.tickets) unsubscribers.current.tickets();
+      listenersActive.current = false;
     };
-  }, [onError, listenersInitialized]);
+  }, []); // Empty dependency array to ensure this runs only once
+
+  // Set timeout to prevent infinite loading
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (gameState.loading && isMounted.current) {
+        console.log("Game data loading timed out");
+        setGameState(prev => ({
+          ...prev,
+          loading: false,
+          error: "Loading timed out. Please try refreshing the page."
+        }));
+      }
+    }, 20000); // 20 seconds timeout
+    
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   const value = {
     ...gameState,
