@@ -21,8 +21,8 @@ const LoadingSpinner = () => (
   </div>
 );
 
-// Route Guard Component
-const RouteGuard = ({ children }) => {
+// Route Guard Component with modification to allow viewing tickets
+const RouteGuard = ({ children, allowTicketAccess = false }) => {
   const { currentGame, loading, error } = useGame();
 
   if (loading) {
@@ -46,8 +46,8 @@ const RouteGuard = ({ children }) => {
     );
   }
 
-  // Modified condition - allow viewing tickets even if no current game
-  if (!currentGame && window.location.pathname !== '/ticket') {
+  // Skip this check if we're viewing a ticket and allowTicketAccess is true
+  if (!currentGame && !allowTicketAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-6 bg-white rounded-lg shadow-md">
@@ -83,13 +83,13 @@ const AppRouter = () => {
               } 
             />
 
-            {/* Ticket Details Route - No RouteGuard to allow access without current game */}
+            {/* Ticket Details Route - With allowTicketAccess flag */}
             <Route 
               path="/ticket/:ticketId" 
               element={
-                <Suspense fallback={<LoadingSpinner />}>
+                <RouteGuard allowTicketAccess={true}>
                   <TicketPage />
-                </Suspense>
+                </RouteGuard>
               } 
             />
 
