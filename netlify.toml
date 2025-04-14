@@ -32,4 +32,4 @@
 # Define actual environment variables in Netlify UI
 [context.production.environment]
   # This is a placeholder to remind you to set these in Netlify dashboard
-  VITE_FIREBASE_HOST_ID = "SMRyGxVTVRcDOcvi9wtfO8rzkjf1"
+  VITE_FIREBASE_HOST_ID = "x4q2vWEh8hfdjLwoY8KzVwCD9dB2"
