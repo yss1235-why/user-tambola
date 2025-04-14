@@ -220,9 +220,26 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
   const [previousWinners, setPreviousWinners] = useState({});
   const [enabledPrizes, setEnabledPrizes] = useState([]);
   const [expanded, setExpanded] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
   
   // Sheet prizes to be consolidated
   const SHEET_PRIZES = ['halfSheet', 'fullSheet'];
+
+  // Set up user interaction detection
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      setHasInteracted(true);
+    };
+    
+    // Add event listeners for user interaction
+    document.addEventListener('click', handleUserInteraction, { once: true });
+    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+    
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, []);
 
   // Find player name from different sources
   const findPlayerName = (ticketId, gameData) => {
@@ -378,8 +395,8 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
       if (newLatestWinner && (!latestWinner || 
           (newLatestWinner.prizeType !== latestWinner.prizeType || 
            newLatestWinner.ticketId !== latestWinner.ticketId))) {
-        // Announce the winner if we're in playing phase
-        if (gameContext.phase === 3) {
+        // Announce the winner if we're in playing phase and user has interacted
+        if (gameContext.phase === 3 && hasInteracted) {
           announceNumber(newLatestWinner.prizeType, newLatestWinner.playerName);
         }
         setLatestWinner(newLatestWinner);
@@ -388,7 +405,7 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
   }, [gameContext.currentGame?.gameState?.winners, gameContext.currentGame?.activeTickets?.tickets, 
       gameContext.currentGame?.activeTickets?.bookings, gameContext.currentGame?.settings?.prizes,
       gameContext.currentGame?.players, previousGameData, currentGame, showPrevious, 
-      gameContext.phase, latestWinner]);
+      gameContext.phase, latestWinner, hasInteracted]);
 
   const headerTitle = showPrevious ? 
     "Previous Winners" : 
