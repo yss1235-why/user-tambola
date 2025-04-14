@@ -116,9 +116,17 @@ const TicketPage = () => {
       return;
     }
 
-    const ticket = currentGame.activeTickets.tickets.find(
-      t => t && t.id && t.id.toString() === ticketId
-    );
+    // Find the ticket in the tickets array (accounting for null entries)
+    let ticket = null;
+    if (Array.isArray(currentGame.activeTickets.tickets)) {
+      for (let i = 0; i < currentGame.activeTickets.tickets.length; i++) {
+        const t = currentGame.activeTickets.tickets[i];
+        if (t && t.id && t.id.toString() === ticketId) {
+          ticket = t;
+          break;
+        }
+      }
+    }
 
     if (!ticket) {
       setError('Ticket not found');
@@ -126,6 +134,46 @@ const TicketPage = () => {
       return;
     }
 
+    // Find player booking information (accounting for null entries)
+    let playerName = null;
+    let bookingDetails = null;
+
+    // Check in bookings array
+    if (Array.isArray(currentGame.activeTickets.bookings)) {
+      for (let i = 0; i < currentGame.activeTickets.bookings.length; i++) {
+        const booking = currentGame.activeTickets.bookings[i];
+        if (booking && booking.number && booking.number.toString() === ticketId) {
+          playerName = booking.playerName;
+          bookingDetails = {
+            playerName: booking.playerName,
+            timestamp: booking.timestamp
+          };
+          break;
+        }
+      }
+    }
+
+    // Check in players object
+    if (!playerName && currentGame.players) {
+      for (const playerId in currentGame.players) {
+        const player = currentGame.players[playerId];
+        if (player.tickets && player.tickets.includes(ticketId.toString())) {
+          playerName = player.name;
+          bookingDetails = {
+            playerName: player.name,
+            timestamp: player.bookingTime
+          };
+          break;
+        }
+      }
+    }
+
+    // If we found booking details, add them to the ticket
+    if (bookingDetails) {
+      ticket.bookingDetails = bookingDetails;
+    }
+
+    // Format the ticket with called numbers
     const formattedTicket = formatTicketForDisplay(ticket, calledNumbers);
     setTicketDetails(formattedTicket);
     setLoading(false);
@@ -158,9 +206,7 @@ const TicketPage = () => {
     );
   }
 
-  if (!ticketDetails) {
-    return null;
-  }
+  if (!ticketDetails) return null;
 
   const wonPrizes = checkTicketPrizes(ticketDetails, calledNumbers);
   const playerName = ticketDetails.bookingDetails?.playerName || 'Unbooked Ticket';
