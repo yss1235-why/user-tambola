@@ -1,4 +1,4 @@
-// src/config/firebase.js - updated anonymous auth to reuse existing sessions
+// src/config/firebase.js
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, off, get } from 'firebase/database';
 import { getAnalytics } from "firebase/analytics";
@@ -17,19 +17,24 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Use the correct Host ID from your actual Firebase data
-const HOST_ID = "B8kbztcNrrXbvWYtlv3slaXJSyR2";
+// Use the host ID from your configuration
+const HOST_ID = import.meta.env.VITE_FIREBASE_HOST_ID || "B8kbztcNrrXbvWYtlv3slaXJSyR2";
 
 // Initialize Firebase
 let app, database, analytics, auth;
 try {
   app = initializeApp(firebaseConfig);
   database = getDatabase(app);
-  analytics = getAnalytics(app);
   auth = getAuth(app);
-  console.log('Firebase initialized with project:', firebaseConfig.projectId);
+  try {
+    analytics = getAnalytics(app);
+  } catch (analyticsError) {
+    console.log('Analytics initialization skipped:', analyticsError.message);
+  }
+  console.log('Firebase initialized successfully');
 } catch (error) {
   console.error('Firebase initialization error:', error);
+  // Create mock objects for graceful degradation
   database = { app: null, ref: () => ({}) };
   auth = { 
     currentUser: null, 
@@ -40,113 +45,79 @@ try {
   };
 }
 
-// Keep track of auth state to avoid repeated sign-ins
-let isSigningIn = false;
-let isAuthenticated = false;
+// Track authentication state
+let authInitialized = false;
+let authInProgress = false;
 
-// Check if there's a stored session in localStorage
-const getStoredSession = () => {
-  try {
-    const sessionStr = localStorage.getItem('tambolaAuthSession');
-    if (sessionStr) {
-      return JSON.parse(sessionStr);
-    }
-  } catch (error) {
-    console.error('Error retrieving stored session:', error);
-  }
-  return null;
-};
-
-// Store session in localStorage for persistence
-const storeSession = (user) => {
-  try {
-    // Only store minimal information needed for debugging/logging
-    const sessionData = {
-      uid: user.uid,
-      isAnonymous: user.isAnonymous,
-      lastLogin: Date.now()
-    };
-    localStorage.setItem('tambolaAuthSession', JSON.stringify(sessionData));
-  } catch (error) {
-    console.error('Error storing session:', error);
-  }
-};
-
-// Authentication utilities with improved session management
+// Sign in anonymously with timeout
 export const signInAnonymousUser = async () => {
-  // If we're already signing in or authenticated, don't start a new sign-in
-  if (isSigningIn || isAuthenticated) {
-    console.log("Auth already in progress or completed, skipping new sign-in");
+  if (authInProgress) {
+    console.log("Authentication already in progress");
+    return null;
+  }
+  
+  if (auth.currentUser) {
+    console.log("User already authenticated:", auth.currentUser.uid);
     return auth.currentUser;
   }
   
+  authInProgress = true;
+  
   try {
-    isSigningIn = true;
+    // Set a timeout to prevent hanging
+    const authPromise = signInAnonymously(auth);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Authentication timed out")), 10000)
+    );
     
-    // Check if we're already authenticated
-    if (auth.currentUser) {
-      console.log("Using existing authenticated user:", auth.currentUser.uid);
-      isAuthenticated = true;
-      storeSession(auth.currentUser);
-      return auth.currentUser;
-    }
-    
-    // Check for stored session info (just for logging, actual session is managed by Firebase)
-    const storedSession = getStoredSession();
-    if (storedSession) {
-      console.log("Found stored session, Firebase will attempt to reuse it");
-    }
-    
-    // Let Firebase handle session persistence and reuse
-    console.log("Performing anonymous authentication");
-    const userCredential = await signInAnonymously(auth);
-    
-    console.log("Anonymous authentication successful:", userCredential.user.uid);
-    isAuthenticated = true;
-    storeSession(userCredential.user);
+    const userCredential = await Promise.race([authPromise, timeoutPromise]);
+    console.log("Anonymous auth successful:", userCredential.user.uid);
+    authInitialized = true;
     return userCredential.user;
   } catch (error) {
-    console.error("Anonymous authentication error:", error);
-    throw error;
+    console.error("Anonymous auth error:", error);
+    // For timeout or other errors, return null instead of throwing
+    return null;
   } finally {
-    isSigningIn = false;
+    authInProgress = false;
   }
 };
 
-// Check if user is already authenticated
+// Get current user with timeout
 export const getCurrentUser = () => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (!auth) {
-      reject(new Error("Firebase auth not initialized"));
+      console.log("Auth not initialized");
+      resolve(null);
       return;
     }
     
-    // First check if auth.currentUser is already set
     if (auth.currentUser) {
-      console.log("Current user already available:", auth.currentUser.uid);
-      isAuthenticated = true;
-      storeSession(auth.currentUser);
+      console.log("Current user available:", auth.currentUser.uid);
       resolve(auth.currentUser);
       return;
     }
     
-    // Otherwise, wait for auth state to be determined
+    // Set timeout to avoid hanging
+    const timeout = setTimeout(() => {
+      console.log("Auth state check timed out");
+      resolve(null);
+    }, 5000);
+    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      clearTimeout(timeout);
       unsubscribe();
       if (user) {
-        console.log("Auth state changed - user authenticated:", user.uid);
-        isAuthenticated = true;
-        storeSession(user);
+        console.log("Auth state resolved with user:", user.uid);
       } else {
-        console.log("Auth state changed - no authenticated user");
-        isAuthenticated = false;
+        console.log("Auth state resolved with no user");
       }
       resolve(user);
-    }, reject);
+    });
   });
 };
 
-// Database paths using the centralized HOST_ID
+// Database paths
 export const PATHS = {
   currentGame: `hosts/${HOST_ID}/currentGame`,
   gameState: `hosts/${HOST_ID}/currentGame/gameState`,
@@ -155,29 +126,23 @@ export const PATHS = {
   winners: `hosts/${HOST_ID}/currentGame/winners`,
   settings: `hosts/${HOST_ID}/settings`,
   hostProfile: `hosts/${HOST_ID}/profile`,
-  hostSettings: `hosts/${HOST_ID}/settings`,
-  gameHistory: `hosts/${HOST_ID}/gameHistory`,
 };
 
-// Game constants
-export const GAME_PHASES = appConfig.gameConstants.phases;
-export const GAME_STATUS = appConfig.gameConstants.status;
-
-// Database utilities with authentication
+// Database utilities with error handling and timeouts
 export const databaseUtils = {
-  // Authenticate and then fetch data
   fetchData: async (path) => {
     try {
-      if (!database) throw new Error("Firebase database not initialized");
-      
-      // Ensure user is authenticated before fetching data
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        await signInAnonymousUser();
-      }
+      if (!database) return null;
       
       const reference = ref(database, path);
-      const snapshot = await get(reference);
+      
+      // Set timeout to prevent hanging
+      const fetchPromise = get(reference);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Database fetch timed out")), 10000)
+      );
+      
+      const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
       return snapshot.val();
     } catch (error) {
       console.error(`Error fetching from ${path}:`, error.message);
@@ -185,39 +150,49 @@ export const databaseUtils = {
     }
   },
   
-  // Set up a listener with authentication
   listenToPath: async (path, callback, errorCallback) => {
     try {
-      if (!database) throw new Error("Firebase database not initialized");
-      
-      // Ensure authentication first
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        await signInAnonymousUser();
+      if (!database) {
+        if (errorCallback) errorCallback(new Error("Database not initialized"));
+        return () => {};
       }
       
       const reference = ref(database, path);
-      const unsubscribe = onValue(reference, 
+      
+      // Add timeout for initial connection
+      let initialized = false;
+      const timeout = setTimeout(() => {
+        if (!initialized && errorCallback) {
+          errorCallback(new Error("Database connection timed out"));
+        }
+      }, 10000);
+      
+      const unsubscribe = onValue(
+        reference, 
         (snapshot) => {
-          const data = snapshot.val();
-          console.log(`Reading data from ${path}:`, data);
+          initialized = true;
+          clearTimeout(timeout);
           callback(snapshot);
         }, 
         (error) => {
+          initialized = true;
+          clearTimeout(timeout);
           console.error(`Error reading from ${path}:`, error.message);
           if (errorCallback) errorCallback(error);
         }
       );
       
-      return unsubscribe;
+      return () => {
+        clearTimeout(timeout);
+        off(reference);
+      };
     } catch (error) {
       console.error(`Error setting up listener for ${path}:`, error.message);
       if (errorCallback) errorCallback(error);
-      return () => {}; // Return empty function as unsubscribe
+      return () => {};
     }
   },
   
-  // Make getCurrentUser available in databaseUtils for convenience
   getCurrentUser
 };
 
