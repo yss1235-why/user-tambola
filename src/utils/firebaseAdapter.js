@@ -19,10 +19,12 @@ export const normalizeGameData = (gameData) => {
   if (!normalizedData.gameState) {
     normalizedData.gameState = { phase: 1, status: 'setup' };
   } else {
-    // Convert 'booking' status to 'active' status if in phase 2 or 3
+    // Convert 'booking' status to 'active' status if in phase 2
+    // This maps the database value to what the app expects
     if (normalizedData.gameState.status === 'booking' && 
-        (normalizedData.gameState.phase === 2 || normalizedData.gameState.phase === 3)) {
-      normalizedData.gameState.status = 'active';
+        normalizedData.gameState.phase === 2) {
+      // We'll keep 'booking' as is, as the app now supports this status
+      // normalizedData.gameState.status = 'active';
     }
     
     // Ensure winners object exists
@@ -75,6 +77,21 @@ export const normalizeGameData = (gameData) => {
     if (!normalizedData.activeTickets.bookings) {
       normalizedData.activeTickets.bookings = [];
     }
+  }
+  
+  // Normalize settings
+  if (!normalizedData.settings) {
+    normalizedData.settings = {
+      hostPhone: "",
+      prizes: {
+        quickFive: true,
+        topLine: true,
+        middleLine: true,
+        bottomLine: true,
+        corners: true,
+        fullHouse: true
+      }
+    };
   }
   
   return normalizedData;
