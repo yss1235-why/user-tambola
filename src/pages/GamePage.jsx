@@ -1,4 +1,4 @@
-// src/pages/GamePage.jsx - Updated without search in booking phase
+// src/pages/GamePage.jsx - Updated with new AvailableTicketsGrid
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { Link } from 'react-router-dom';
@@ -6,7 +6,7 @@ import NumberBoard from '../components/game/NumberBoard';
 import NumberDisplay from '../components/game/NumberDisplay';
 import WinnersDisplay from '../components/game/WinnersDisplay';
 import TicketSearch from '../components/game/TicketSearch';
-import TicketCard from '../components/game/TicketCard';
+import AvailableTicketsGrid from '../components/game/AvailableTicketsGrid';
 
 // No Game Available Component
 const NoGameAvailable = () => {
@@ -33,50 +33,6 @@ const NoGameAvailable = () => {
             Refresh
           </span>
         </button>
-      </div>
-    </div>
-  );
-};
-
-// Available Tickets Grid Component
-const AvailableTicketsGrid = () => {
-  const { currentGame, phase } = useGame();
-  const [tickets, setTickets] = useState([]);
-
-  useEffect(() => {
-    // Extract tickets from game data
-    if (currentGame?.activeTickets?.tickets) {
-      // Filter to only show available tickets (not booked)
-      const availableTickets = currentGame.activeTickets.tickets.filter(
-        ticket => ticket && ticket.status !== 'booked'
-      );
-      setTickets(availableTickets);
-    }
-  }, [currentGame?.activeTickets?.tickets]);
-
-  if (!tickets || tickets.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-md p-6 text-center">
-        <p className="text-gray-600">No available tickets found.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="px-4 py-3 bg-blue-600 text-white">
-        <h2 className="font-semibold">Available Tickets ({tickets.length})</h2>
-      </div>
-      <div className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tickets.map(ticket => (
-            <TicketCard 
-              key={ticket.id} 
-              ticket={ticket}
-              showRemoveButton={false}
-            />
-          ))}
-        </div>
       </div>
     </div>
   );
@@ -140,15 +96,15 @@ const GamePage = () => {
           
           {/* Number Board - Only show in playing phase */}
           {isPlayingPhase ? <NumberBoard /> : null}
-          
-          {/* Available Tickets - Only show in booking phase */}
-          {isBookingPhase && <AvailableTicketsGrid />}
         </div>
         
         {/* Right Column - Tickets & Settings */}
         <div className="space-y-6">
           {/* Ticket Search - Only show in playing phase */}
           {isPlayingPhase && <TicketSearch />}
+          
+          {/* Ticket booking - Only show in booking phase */}
+          {isBookingPhase && <AvailableTicketsGrid />}
         </div>
       </div>
       
