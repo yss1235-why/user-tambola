@@ -13,6 +13,7 @@ class EnhancedWinnersAudioManager {
     this.lastAnnouncedWinner = null;
     this.soundEffectsEnabled = true;
     this.volume = 0.7;
+    this.hasUserInteracted = false;
 
     // Sound effects
     this.sounds = {
@@ -178,6 +179,13 @@ class EnhancedWinnersAudioManager {
     }
   }
 
+  setUserInteracted() {
+    this.hasUserInteracted = true;
+    
+    // Process any queued announcements
+    this.processAnnouncementQueue();
+  }
+
   setMuted(muted) {
     this.isMuted = muted;
     if (muted) {
@@ -212,7 +220,7 @@ class EnhancedWinnersAudioManager {
   }
 
   async processAnnouncementQueue() {
-    if (this.isProcessing || this.announcementQueue.length === 0) return;
+    if (this.isProcessing || this.announcementQueue.length === 0 || !this.hasUserInteracted) return;
 
     this.isProcessing = true;
     
@@ -229,13 +237,13 @@ class EnhancedWinnersAudioManager {
 
   async playAnnouncement(announcement) {
     return new Promise((resolve) => {
-      if (this.isMuted) {
+      if (this.isMuted || !this.hasUserInteracted) {
         resolve();
         return;
       }
 
       // Play sound effect if enabled
-      if (this.soundEffectsEnabled && announcement.sound) {
+      if (this.hasUserInteracted && this.soundEffectsEnabled && announcement.sound) {
         const sound = this.sounds[announcement.sound];
         if (sound) {
           sound.currentTime = 0;
@@ -246,7 +254,7 @@ class EnhancedWinnersAudioManager {
       // Delay before starting TTS (gives sound effect time to shine)
       setTimeout(() => {
         // Play TTS announcement
-        if ('speechSynthesis' in window) {
+        if ('speechSynthesis' in window && this.hasUserInteracted) {
           const utterance = new SpeechSynthesisUtterance(announcement.message);
           utterance.voice = this.ttsVoice;
           utterance.lang = this.ttsLanguage;
@@ -267,7 +275,7 @@ class EnhancedWinnersAudioManager {
         } else {
           resolve();
         }
-      }, announcement.delay || 0);
+      }, this.hasUserInteracted ? (announcement.delay || 0) : 0);
     });
   }
 
@@ -303,7 +311,11 @@ class EnhancedWinnersAudioManager {
     };
 
     this.announcementQueue.push(announcement);
-    this.processAnnouncementQueue();
+    
+    // Process queue only if user has interacted
+    if (this.hasUserInteracted) {
+      this.processAnnouncementQueue();
+    }
   }
 
   formatWinnerMessage(baseMessage, winnerDetails) {
@@ -320,9 +332,7 @@ const enhancedWinnersAudio = new EnhancedWinnersAudioManager();
 // Initialize audio on first user interaction
 const initializeEnhancedWinnersAudio = () => {
   const result = enhancedWinnersAudio.initialize();
-  if (!result) {
-    console.warn('Enhanced winners audio initialization failed. Announcements may be unavailable.');
-  }
+  enhancedWinnersAudio.setUserInteracted();
   return result;
 };
 
