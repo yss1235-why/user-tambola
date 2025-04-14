@@ -1,4 +1,4 @@
-// src/pages/GamePage.jsx - Updated with new AvailableTicketsGrid
+// src/pages/GamePage.jsx
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { Link } from 'react-router-dom';
@@ -11,8 +11,8 @@ import AvailableTicketsGrid from '../components/game/AvailableTicketsGrid';
 // No Game Available Component
 const NoGameAvailable = () => {
   return (
-    <div className="max-w-lg mx-auto bg-white rounded-lg shadow-md p-8 text-center">
-      <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+    <div className="max-w-lg mx-auto bg-white rounded-lg shadow-md p-4 sm:p-8 text-center">
+      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4">
         No Active Game
       </h2>
       <div className="mb-6 text-gray-600">
@@ -63,7 +63,7 @@ const GamePage = () => {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6 text-center">
+        <div className="w-full max-w-md bg-white rounded-lg shadow-md p-4 sm:p-6 text-center">
           <h2 className="text-xl font-semibold text-red-600 mb-4">Connection Error</h2>
           <p className="text-sm text-gray-600 mb-6">{error}</p>
           <button
@@ -84,10 +84,10 @@ const GamePage = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
         {/* Left Column - Game Info */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Number Display */}
           {isPlayingPhase ? <NumberDisplay /> : null}
           
@@ -99,7 +99,7 @@ const GamePage = () => {
         </div>
         
         {/* Right Column - Tickets & Settings */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Ticket Search - Only show in playing phase */}
           {isPlayingPhase && <TicketSearch />}
           
@@ -109,7 +109,7 @@ const GamePage = () => {
       </div>
       
       {/* Refresh Button */}
-      <div className="text-center mt-6">
+      <div className="text-center mt-4 sm:mt-6">
         <button
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded transition-colors"
