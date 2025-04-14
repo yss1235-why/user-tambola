@@ -1,9 +1,8 @@
-// src/context/GameContext.jsx
+// src/context/GameContext.jsx with additional debugging
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, HOST_ID, databaseUtils } from '../config/firebase';
 import { useAuth } from './AuthContext';
 import appConfig from '../config/appConfig';
-import { ref, onValue, off } from 'firebase/database';
 import { normalizeGameData, normalizeTickets, normalizeCalledNumbers } from '../utils/firebaseAdapter';
 
 const GameContext = createContext();
@@ -24,23 +23,39 @@ export const GameProvider = ({ children, onError }) => {
     bookings: {},
   });
 
+  // Debug logging
+  useEffect(() => {
+    console.log("GameContext initialized");
+    console.log("HOST_ID:", HOST_ID);
+    console.log("BASE_PATH:", BASE_PATH);
+    console.log("Auth state:", { authLoading, authError, isAuthenticated: !!currentUser });
+  }, []);
+
   // Set up Firebase listeners once authenticated
   useEffect(() => {
     // Don't proceed if still loading auth or if there's an auth error
-    if (authLoading || authError) {
+    if (authLoading) {
+      console.log("Auth still loading, waiting...");
       return;
     }
     
-    console.log('Using Host ID:', HOST_ID);
+    if (authError) {
+      console.log("Auth error, aborting game data load:", authError);
+      return;
+    }
+    
+    console.log('Setting up Firebase listeners with Host ID:', HOST_ID);
     
     // Set up async function to handle listeners
     const setupListeners = async () => {
       try {
+        console.log("Attempting to set up game data listener...");
+        
         // Initialize listeners with the databaseUtils that handle authentication
         const gameUnsubscribe = await databaseUtils.listenToPath(BASE_PATH, 
           (snapshot) => {
             const rawGameData = snapshot.val();
-            console.log('Raw Game Data:', rawGameData);
+            console.log('Raw Game Data received:', rawGameData);
 
             if (rawGameData) {
               // Normalize the game data
@@ -77,11 +92,12 @@ export const GameProvider = ({ children, onError }) => {
             if (onError) onError('Failed to connect to game server: ' + error.message);
           }
         );
-
+        
+        console.log("Attempting to set up bookings listener...");
         const bookingsUnsubscribe = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/bookings`, 
           (snapshot) => {
             const bookingsData = snapshot.val();
-            console.log('Bookings Data:', bookingsData);
+            console.log('Bookings Data received:', bookingsData);
             
             // Provide an empty array if bookings is null
             const normalizedBookings = bookingsData || [];
@@ -101,10 +117,11 @@ export const GameProvider = ({ children, onError }) => {
           }
         );
 
+        console.log("Attempting to set up tickets listener...");
         const ticketsUnsubscribe = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/tickets`, 
           (snapshot) => {
             const rawTicketsData = snapshot.val();
-            console.log('Raw Tickets Data:', rawTicketsData);
+            console.log('Raw Tickets Data received:', rawTicketsData);
 
             // Normalize tickets (remove nulls, ensure proper format)
             const normalizedTickets = normalizeTickets(rawTicketsData);
@@ -125,8 +142,11 @@ export const GameProvider = ({ children, onError }) => {
           }
         );
 
+        console.log("All listeners set up successfully");
+        
         // Return cleanup function
         return () => {
+          console.log("Cleaning up Firebase listeners");
           gameUnsubscribe && gameUnsubscribe();
           bookingsUnsubscribe && bookingsUnsubscribe();
           ticketsUnsubscribe && ticketsUnsubscribe();
@@ -152,16 +172,34 @@ export const GameProvider = ({ children, onError }) => {
     // Clean up function
     return () => {
       // Execute the cleanup function returned by setupListeners
-      cleanupListeners.then(cleanup => cleanup && cleanup());
+      cleanupListeners.then(cleanup => {
+        if (cleanup) {
+          console.log("Executing cleanup function");
+          cleanup();
+        }
+      });
     };
   }, [currentUser, authLoading, authError, onError]);
 
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log("GameState updated:", {
+      loading: gameState.loading,
+      error: gameState.error,
+      phase: gameState.phase,
+      ticketsCount: gameState.tickets.length,
+      hasCurrentGame: !!gameState.currentGame
+    });
+  }, [gameState]);
+
   // Show authentication-related loading/error states
   if (authLoading) {
+    console.log("Rendering auth loading state");
     return <div>Authenticating...</div>;
   }
 
-  if (authError) {
+  if (authError && !gameState.demoMode) {
+    console.log("Rendering auth error state");
     return <div>Authentication Error: {authError}</div>;
   }
 
