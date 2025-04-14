@@ -1,4 +1,4 @@
-// src/config/firebase.js
+// src/config/firebase.js - updated anonymous auth to reuse existing sessions
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, off, get } from 'firebase/database';
 import { getAnalytics } from "firebase/analytics";
@@ -40,16 +40,76 @@ try {
   };
 }
 
-// Authentication utilities with error handling
-export const signInAnonymousUser = async () => {
+// Keep track of auth state to avoid repeated sign-ins
+let isSigningIn = false;
+let isAuthenticated = false;
+
+// Check if there's a stored session in localStorage
+const getStoredSession = () => {
   try {
-    if (!auth) throw new Error("Firebase auth not initialized");
+    const sessionStr = localStorage.getItem('tambolaAuthSession');
+    if (sessionStr) {
+      return JSON.parse(sessionStr);
+    }
+  } catch (error) {
+    console.error('Error retrieving stored session:', error);
+  }
+  return null;
+};
+
+// Store session in localStorage for persistence
+const storeSession = (user) => {
+  try {
+    // Only store minimal information needed for debugging/logging
+    const sessionData = {
+      uid: user.uid,
+      isAnonymous: user.isAnonymous,
+      lastLogin: Date.now()
+    };
+    localStorage.setItem('tambolaAuthSession', JSON.stringify(sessionData));
+  } catch (error) {
+    console.error('Error storing session:', error);
+  }
+};
+
+// Authentication utilities with improved session management
+export const signInAnonymousUser = async () => {
+  // If we're already signing in or authenticated, don't start a new sign-in
+  if (isSigningIn || isAuthenticated) {
+    console.log("Auth already in progress or completed, skipping new sign-in");
+    return auth.currentUser;
+  }
+  
+  try {
+    isSigningIn = true;
+    
+    // Check if we're already authenticated
+    if (auth.currentUser) {
+      console.log("Using existing authenticated user:", auth.currentUser.uid);
+      isAuthenticated = true;
+      storeSession(auth.currentUser);
+      return auth.currentUser;
+    }
+    
+    // Check for stored session info (just for logging, actual session is managed by Firebase)
+    const storedSession = getStoredSession();
+    if (storedSession) {
+      console.log("Found stored session, Firebase will attempt to reuse it");
+    }
+    
+    // Let Firebase handle session persistence and reuse
+    console.log("Performing anonymous authentication");
     const userCredential = await signInAnonymously(auth);
+    
     console.log("Anonymous authentication successful:", userCredential.user.uid);
+    isAuthenticated = true;
+    storeSession(userCredential.user);
     return userCredential.user;
   } catch (error) {
     console.error("Anonymous authentication error:", error);
     throw error;
+  } finally {
+    isSigningIn = false;
   }
 };
 
@@ -61,8 +121,26 @@ export const getCurrentUser = () => {
       return;
     }
     
+    // First check if auth.currentUser is already set
+    if (auth.currentUser) {
+      console.log("Current user already available:", auth.currentUser.uid);
+      isAuthenticated = true;
+      storeSession(auth.currentUser);
+      resolve(auth.currentUser);
+      return;
+    }
+    
+    // Otherwise, wait for auth state to be determined
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       unsubscribe();
+      if (user) {
+        console.log("Auth state changed - user authenticated:", user.uid);
+        isAuthenticated = true;
+        storeSession(user);
+      } else {
+        console.log("Auth state changed - no authenticated user");
+        isAuthenticated = false;
+      }
       resolve(user);
     }, reject);
   });
@@ -137,7 +215,10 @@ export const databaseUtils = {
       if (errorCallback) errorCallback(error);
       return () => {}; // Return empty function as unsubscribe
     }
-  }
+  },
+  
+  // Make getCurrentUser available in databaseUtils for convenience
+  getCurrentUser
 };
 
 export { app, database as db, analytics, auth, HOST_ID };
