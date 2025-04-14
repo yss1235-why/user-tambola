@@ -1,4 +1,4 @@
-// src/context/GameContext.jsx with additional debugging
+// src/context/GameContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, HOST_ID, databaseUtils } from '../config/firebase';
 import { useAuth } from './AuthContext';
@@ -22,64 +22,49 @@ export const GameProvider = ({ children, onError }) => {
     tickets: [],
     bookings: {},
   });
+  const [listenersInitialized, setListenersInitialized] = useState(false);
 
-  // Debug logging
+  // Set up Firebase listeners once per mount
   useEffect(() => {
-    console.log("GameContext initialized");
-    console.log("HOST_ID:", HOST_ID);
-    console.log("BASE_PATH:", BASE_PATH);
-    console.log("Auth state:", { authLoading, authError, isAuthenticated: !!currentUser });
-  }, []);
-
-  // Set up Firebase listeners once authenticated
-  useEffect(() => {
-    // Don't proceed if still loading auth or if there's an auth error
-    if (authLoading) {
-      console.log("Auth still loading, waiting...");
-      return;
-    }
+    if (listenersInitialized) return;
     
-    if (authError) {
-      console.log("Auth error, aborting game data load:", authError);
-      return;
-    }
-    
+    // Don't wait for auth to be completed - proceed anyway
     console.log('Setting up Firebase listeners with Host ID:', HOST_ID);
+    
+    // Cleanup function for all listeners
+    let gameUnsubscribe = null;
+    let bookingsUnsubscribe = null;
+    let ticketsUnsubscribe = null;
     
     // Set up async function to handle listeners
     const setupListeners = async () => {
       try {
-        console.log("Attempting to set up game data listener...");
+        console.log("Setting up game data listener");
         
-        // Initialize listeners with the databaseUtils that handle authentication
-        const gameUnsubscribe = await databaseUtils.listenToPath(BASE_PATH, 
+        // Game data listener
+        gameUnsubscribe = await databaseUtils.listenToPath(BASE_PATH, 
           (snapshot) => {
             const rawGameData = snapshot.val();
-            console.log('Raw Game Data received:', rawGameData);
-
+            
             if (rawGameData) {
               // Normalize the game data
               const gameData = normalizeGameData(rawGameData);
-              console.log('Normalized Game Data:', gameData);
-
+              
               setGameState(prev => ({
                 ...prev,
                 loading: false,
-                error: null, // Clear any previous errors
+                error: null,
                 currentGame: gameData,
                 phase: gameData.gameState?.phase || 1,
                 calledNumbers: normalizeCalledNumbers(gameData.numberSystem?.calledNumbers),
                 lastCalledNumber: gameData.numberSystem?.currentNumber,
               }));
             } else {
-              const errorMsg = 'No game data available. The host may not have an active game.';
-              console.error(errorMsg);
               setGameState(prev => ({
                 ...prev,
                 loading: false,
-                error: errorMsg,
+                error: 'No game data available',
               }));
-              if (onError) onError(errorMsg);
             }
           },
           (error) => {
@@ -93,15 +78,14 @@ export const GameProvider = ({ children, onError }) => {
           }
         );
         
-        console.log("Attempting to set up bookings listener...");
-        const bookingsUnsubscribe = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/bookings`, 
+        // Bookings listener
+        bookingsUnsubscribe = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/bookings`, 
           (snapshot) => {
             const bookingsData = snapshot.val();
-            console.log('Bookings Data received:', bookingsData);
             
             // Provide an empty array if bookings is null
             const normalizedBookings = bookingsData || [];
-
+            
             setGameState(prev => ({
               ...prev,
               bookings: normalizedBookings
@@ -109,23 +93,21 @@ export const GameProvider = ({ children, onError }) => {
           },
           (error) => {
             console.error('Error fetching bookings:', error);
-            // Provide empty bookings array on error
+            // Provide empty bookings array on error, but don't set main error
             setGameState(prev => ({
               ...prev,
               bookings: []
             }));
           }
         );
-
-        console.log("Attempting to set up tickets listener...");
-        const ticketsUnsubscribe = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/tickets`, 
+        
+        // Tickets listener
+        ticketsUnsubscribe = await databaseUtils.listenToPath(`${BASE_PATH}/activeTickets/tickets`, 
           (snapshot) => {
             const rawTicketsData = snapshot.val();
-            console.log('Raw Tickets Data received:', rawTicketsData);
-
+            
             // Normalize tickets (remove nulls, ensure proper format)
             const normalizedTickets = normalizeTickets(rawTicketsData);
-            console.log('Normalized Tickets:', normalizedTickets);
             
             setGameState(prev => ({
               ...prev,
@@ -134,74 +116,38 @@ export const GameProvider = ({ children, onError }) => {
           },
           (error) => {
             console.error('Error fetching tickets:', error);
-            // Provide empty tickets array on error
+            // Provide empty tickets array on error, but don't set main error
             setGameState(prev => ({
               ...prev,
               tickets: []
             }));
           }
         );
-
-        console.log("All listeners set up successfully");
         
-        // Return cleanup function
-        return () => {
-          console.log("Cleaning up Firebase listeners");
-          gameUnsubscribe && gameUnsubscribe();
-          bookingsUnsubscribe && bookingsUnsubscribe();
-          ticketsUnsubscribe && ticketsUnsubscribe();
-        };
+        setListenersInitialized(true);
+        console.log("All Firebase listeners set up successfully");
       } catch (error) {
         console.error("Error setting up game listeners:", error);
-        const errorMsg = 'Error initializing game data: ' + error.message;
         setGameState(prev => ({
           ...prev,
           loading: false,
-          error: errorMsg,
+          error: 'Error initializing game data: ' + error.message,
         }));
-        if (onError) onError(errorMsg);
-        
-        // Return empty cleanup function
-        return () => {};
+        if (onError) onError('Error initializing game data: ' + error.message);
       }
     };
-
-    // Set up listeners
-    const cleanupListeners = setupListeners();
     
-    // Clean up function
+    // Set up listeners
+    setupListeners();
+    
+    // Clean up all listeners on unmount
     return () => {
-      // Execute the cleanup function returned by setupListeners
-      cleanupListeners.then(cleanup => {
-        if (cleanup) {
-          console.log("Executing cleanup function");
-          cleanup();
-        }
-      });
+      console.log("Cleaning up Firebase listeners");
+      if (gameUnsubscribe) gameUnsubscribe();
+      if (bookingsUnsubscribe) bookingsUnsubscribe();
+      if (ticketsUnsubscribe) ticketsUnsubscribe();
     };
-  }, [currentUser, authLoading, authError, onError]);
-
-  // Debug logging for state changes
-  useEffect(() => {
-    console.log("GameState updated:", {
-      loading: gameState.loading,
-      error: gameState.error,
-      phase: gameState.phase,
-      ticketsCount: gameState.tickets.length,
-      hasCurrentGame: !!gameState.currentGame
-    });
-  }, [gameState]);
-
-  // Show authentication-related loading/error states
-  if (authLoading) {
-    console.log("Rendering auth loading state");
-    return <div>Authenticating...</div>;
-  }
-
-  if (authError && !gameState.demoMode) {
-    console.log("Rendering auth error state");
-    return <div>Authentication Error: {authError}</div>;
-  }
+  }, [onError, listenersInitialized]);
 
   const value = {
     ...gameState,
