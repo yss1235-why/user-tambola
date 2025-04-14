@@ -21,7 +21,7 @@ export const GameProvider = ({ children, onError }) => {
     lastCalledNumber: null,
     tickets: [],
     bookings: {},
-    players: {},
+    players: {}
   });
   
   // Use refs to track mounted state and prevent cleanup on re-renders
@@ -76,8 +76,8 @@ export const GameProvider = ({ children, onError }) => {
       console.log(`Loaded ${tickets.length} tickets`);
       
       // Count available vs booked
-      const available = tickets.filter(t => t && t.status !== 'booked' && !t.bookingDetails?.playerName).length;
-      const booked = tickets.filter(t => t && (t.status === 'booked' || t.bookingDetails?.playerName)).length;
+      const available = tickets.filter(t => t && t.status !== 'booked').length;
+      const booked = tickets.filter(t => t && t.status === 'booked').length;
       
       console.log(`Available: ${available}, Booked: ${booked}`);
     } else {
@@ -228,17 +228,17 @@ export const GameProvider = ({ children, onError }) => {
         );
         
         // Players listener
-        console.log("Setting up players listener at:", `${BASE_PATH}/Players`);
-        unsubscribers.current.players = await databaseUtils.listenToPath(`${BASE_PATH}/Players`, 
+        console.log("Setting up players listener at:", `${BASE_PATH}/players`);
+        unsubscribers.current.players = await databaseUtils.listenToPath(`${BASE_PATH}/players`, 
           (snapshot) => {
             if (!isMounted.current) return;
             
             const playersData = snapshot.val();
             console.log("Players data received:", playersData ? "Yes" : "No");
             
-            dataReceived.current.players = true;
-            
             if (playersData) {
+              dataReceived.current.players = true;
+              
               setGameState(prev => ({
                 ...prev,
                 players: playersData
@@ -300,15 +300,27 @@ export const GameProvider = ({ children, onError }) => {
     phases: appConfig.gameConstants.phases,
     // Provide text configuration for components
     appText: appConfig.appText,
-    // Utility function to get player name
-    getPlayerName: (playerId) => {
+    // Utility function to get player name by ticket ID
+    getPlayerNameByTicket: (ticketId) => {
+      // First check in players
       const players = gameState.players;
-      // Loop through all player entries to find the matching player
-      for (const key in players) {
-        if (key.startsWith('player_') && players[key].id === playerId) {
-          return players[key].name || null;
+      for (const playerId in players) {
+        const playerTickets = players[playerId].tickets || [];
+        if (playerTickets.includes(ticketId.toString())) {
+          return players[playerId].name;
         }
       }
+      
+      // Then check in bookings
+      if (gameState.bookings && Array.isArray(gameState.bookings)) {
+        const booking = gameState.bookings.find(
+          b => b && b.number && b.number.toString() === ticketId.toString()
+        );
+        if (booking && booking.playerName) {
+          return booking.playerName;
+        }
+      }
+      
       return null;
     }
   };
