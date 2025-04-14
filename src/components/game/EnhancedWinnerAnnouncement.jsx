@@ -1,5 +1,6 @@
 // src/components/game/EnhancedWinnerAnnouncement.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useGame } from '../../context/GameContext';
 import { announceWinner } from '../../utils/winnersAudio';
 import confetti from '../../utils/confetti';
@@ -95,10 +96,14 @@ const EnhancedWinnerAnnouncement = () => {
   const [previousWinners, setPreviousWinners] = useState({});
   const [isVisible, setIsVisible] = useState(false);
   const audioRef = useRef(new Audio());
+  const hasInteractedRef = useRef(false);
 
   // Play sound effect based on prize type
   const playWinSound = (prizeType) => {
     try {
+      // Only play sound if user has interacted with the page
+      if (!hasInteractedRef.current) return;
+      
       const config = PRIZE_CONFIG[prizeType] || {};
       const soundType = config.sound || 'win';
       
@@ -128,8 +133,26 @@ const EnhancedWinnerAnnouncement = () => {
     }
   };
 
+  // Set up user interaction detection
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      hasInteractedRef.current = true;
+    };
+    
+    // Add event listeners for user interaction
+    document.addEventListener('click', handleUserInteraction, { once: true });
+    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+    
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, []);
+
   // Trigger confetti animation
   const triggerConfetti = (prizeType) => {
+    if (!hasInteractedRef.current) return;
+    
     const config = PRIZE_CONFIG[prizeType] || {};
     if (config.confetti) {
       confetti.start();
@@ -204,11 +227,13 @@ const EnhancedWinnerAnnouncement = () => {
           playWinSound(winner.prizeType);
           triggerConfetti(winner.prizeType);
           
-          // Announce using text-to-speech
-          announceWinner(winner.prizeType, {
-            playerName: winner.playerName,
-            ticketId: winner.ticketId
-          });
+          // Announce using text-to-speech only if user has interacted
+          if (hasInteractedRef.current) {
+            announceWinner(winner.prizeType, {
+              playerName: winner.playerName,
+              ticketId: winner.ticketId
+            });
+          }
           
           // Hide after 5 seconds
           setTimeout(() => {
