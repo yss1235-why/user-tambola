@@ -1,4 +1,4 @@
-// src/pages/GamePage.jsx - with improved ticket display
+// src/pages/GamePage.jsx - Updated without search in booking phase
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { Link } from 'react-router-dom';
@@ -89,7 +89,8 @@ const GamePage = () => {
     phase,
     loading,
     error,
-    isPlayingPhase
+    isPlayingPhase,
+    isBookingPhase
   } = useGame();
 
   if (loading) {
@@ -141,13 +142,13 @@ const GamePage = () => {
           {isPlayingPhase ? <NumberBoard /> : null}
           
           {/* Available Tickets - Only show in booking phase */}
-          {phase === 2 && <AvailableTicketsGrid />}
+          {isBookingPhase && <AvailableTicketsGrid />}
         </div>
         
         {/* Right Column - Tickets & Settings */}
         <div className="space-y-6">
-          {/* Ticket Search */}
-          <TicketSearch />
+          {/* Ticket Search - Only show in playing phase */}
+          {isPlayingPhase && <TicketSearch />}
         </div>
       </div>
       
