@@ -46,7 +46,8 @@ const RouteGuard = ({ children }) => {
     );
   }
 
-  if (!currentGame) {
+  // Modified condition - allow viewing tickets even if no current game
+  if (!currentGame && window.location.pathname !== '/ticket') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-6 bg-white rounded-lg shadow-md">
@@ -82,13 +83,13 @@ const AppRouter = () => {
               } 
             />
 
-            {/* Ticket Details Route */}
+            {/* Ticket Details Route - No RouteGuard to allow access without current game */}
             <Route 
               path="/ticket/:ticketId" 
               element={
-                <RouteGuard>
+                <Suspense fallback={<LoadingSpinner />}>
                   <TicketPage />
-                </RouteGuard>
+                </Suspense>
               } 
             />
 
@@ -110,49 +111,4 @@ const AppRouter = () => {
   );
 };
 
-// Error Boundary HOC for route components
-const withErrorBoundary = (WrappedComponent) => {
-  return class ErrorBoundary extends React.Component {
-    constructor(props) {
-      super(props);
-      this.state = { hasError: false, error: null };
-    }
-
-    static getDerivedStateFromError(error) {
-      return { hasError: true, error };
-    }
-
-    componentDidCatch(error, errorInfo) {
-      console.error('Route Error:', error, errorInfo);
-      // Log to your error reporting service here
-    }
-
-    render() {
-      if (this.state.hasError) {
-        return (
-          <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="text-center p-6 bg-white rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold text-red-600 mb-2">Something went wrong</h2>
-              <p className="text-gray-600 mb-4">We're sorry, but there was an error loading this page.</p>
-              <button 
-                onClick={() => window.location.reload()} 
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-              >
-                Reload Page
-              </button>
-            </div>
-          </div>
-        );
-      }
-
-      return <WrappedComponent {...this.props} />;
-    }
-  };
-};
-
-// Apply error boundary to routes
-const GamePageWithErrorBoundary = withErrorBoundary(GamePage);
-const TicketPageWithErrorBoundary = withErrorBoundary(TicketPage);
-
-export { GamePageWithErrorBoundary, TicketPageWithErrorBoundary };
 export default AppRouter;
