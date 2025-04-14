@@ -8,6 +8,7 @@ class WinnersAudioManager {
     this.announcementQueue = [];
     this.isProcessing = false;
     this.lastAnnouncedWinner = null;
+    this.hasUserInteracted = false;
 
     // TTS Configuration
     this.ttsVoice = null;
@@ -51,7 +52,9 @@ class WinnersAudioManager {
 
     try {
       // Initialize Web Audio API
-      this.context = new (window.AudioContext || window.webkitAudioContext)();
+      if (window.AudioContext || window.webkitAudioContext) {
+        this.context = new (window.AudioContext || window.webkitAudioContext)();
+      }
       
       // Initialize Text-to-Speech
       if ('speechSynthesis' in window) {
@@ -59,6 +62,12 @@ class WinnersAudioManager {
           const voices = speechSynthesis.getVoices();
           this.ttsVoice = voices.find(voice => voice.lang === this.ttsLanguage) || voices[0];
         };
+        
+        // Initial voice loading
+        if (speechSynthesis.getVoices().length > 0) {
+          const voices = speechSynthesis.getVoices();
+          this.ttsVoice = voices.find(voice => voice.lang === this.ttsLanguage) || voices[0];
+        }
       }
 
       this.initialized = true;
@@ -67,6 +76,13 @@ class WinnersAudioManager {
       console.error('Failed to initialize winners audio system:', error);
       return false;
     }
+  }
+
+  setUserInteracted() {
+    this.hasUserInteracted = true;
+    
+    // Resume audio context if it was suspended
+    this.resume();
   }
 
   setMuted(muted) {
@@ -84,7 +100,7 @@ class WinnersAudioManager {
   }
 
   async processAnnouncementQueue() {
-    if (this.isProcessing || this.announcementQueue.length === 0) return;
+    if (this.isProcessing || this.announcementQueue.length === 0 || !this.hasUserInteracted) return;
 
     this.isProcessing = true;
     
@@ -101,7 +117,7 @@ class WinnersAudioManager {
 
   async playAnnouncement(announcement) {
     return new Promise((resolve) => {
-      if (this.isMuted) {
+      if (this.isMuted || !this.hasUserInteracted) {
         resolve();
         return;
       }
@@ -127,7 +143,12 @@ class WinnersAudioManager {
   }
 
   announceWinner(prizeType, winnerDetails) {
-    if (this.isMuted) return;
+    if (this.isMuted || !prizeType || !winnerDetails) return;
+
+    // Make sure we're initialized
+    if (!this.initialized) {
+      this.initialize();
+    }
 
     const prizeConfig = this.prizeAnnouncements[prizeType];
     if (!prizeConfig) return;
@@ -143,7 +164,11 @@ class WinnersAudioManager {
     };
 
     this.announcementQueue.push(announcement);
-    this.processAnnouncementQueue();
+    
+    // Process queue only if user has interacted
+    if (this.hasUserInteracted) {
+      this.processAnnouncementQueue();
+    }
   }
 
   formatWinnerMessage(baseMessage, winnerDetails) {
@@ -154,8 +179,8 @@ class WinnersAudioManager {
   }
 
   resume() {
-    if (this.context?.state === 'suspended') {
-      this.context.resume();
+    if (this.context?.state === 'suspended' && this.hasUserInteracted) {
+      this.context.resume().catch(err => console.error('Error resuming audio context:', err));
     }
   }
 }
@@ -166,9 +191,7 @@ const winnersAudioManager = new WinnersAudioManager();
 // Initialize audio on first user interaction
 const initializeWinnersAudio = () => {
   const result = winnersAudioManager.initialize();
-  if (!result) {
-    console.warn('Winners audio initialization failed. Announcements may be unavailable.');
-  }
+  winnersAudioManager.setUserInteracted();
   return result;
 };
 
