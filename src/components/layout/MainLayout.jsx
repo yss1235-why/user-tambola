@@ -1,6 +1,6 @@
 // src/components/layout/MainLayout.jsx
 import React, { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { useGame } from '../../context/GameContext';
 import Header from './Header';
 import EnhancedWinnerAnnouncement from '../game/EnhancedWinnerAnnouncement';
