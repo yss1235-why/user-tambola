@@ -23,6 +23,7 @@ const AppContent = () => {
   const { currentUser, loading: authLoading, error: authError, refreshAuth } = useAuth();
   const [diagnosticResult, setDiagnosticResult] = useState(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
 
   // Set the document title
   useEffect(() => {
@@ -38,10 +39,17 @@ const AppContent = () => {
       try {
         const result = await diagnoseFirebaseConnection();
         setDiagnosticResult(result);
+        
+        // Check if we should activate demo mode
+        if (result.demoMode) {
+          setDemoMode(true);
+          console.log("Demo mode activated!");
+        }
       } catch (error) {
         setDiagnosticResult({ 
           success: false, 
-          error: "Failed to run diagnostics: " + error.message 
+          error: "Failed to run diagnostics: " + error.message,
+          demoModeAvailable: appConfig.firebase.demoMode?.enabled
         });
       } finally {
         setIsDiagnosing(false);
@@ -57,6 +65,18 @@ const AppContent = () => {
   const handleRetryConnection = () => {
     refreshAuth(); // Refresh authentication
     setDiagnosticResult(null);
+    setDemoMode(false);
+  };
+  
+  // Handle activating demo mode
+  const handleActivateDemoMode = () => {
+    setDemoMode(true);
+    setDiagnosticResult({
+      ...diagnosticResult,
+      success: true,
+      demoMode: true,
+      message: "Demo mode activated manually"
+    });
   };
 
   // Display authentication loading screen
@@ -83,13 +103,25 @@ const AppContent = () => {
             <p className="text-gray-600 mb-6">
               {authError}
             </p>
-            <button
-              onClick={refreshAuth}
-              className="px-6 py-2 bg-blue-500 text-white rounded-md 
-                       hover:bg-blue-600 transition-colors duration-200"
-            >
-              Retry Connection
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={refreshAuth}
+                className="w-full px-6 py-2 bg-blue-500 text-white rounded-md 
+                        hover:bg-blue-600 transition-colors duration-200"
+              >
+                Retry Connection
+              </button>
+              
+              {appConfig.firebase.demoMode?.enabled && (
+                <button
+                  onClick={handleActivateDemoMode}
+                  className="w-full px-6 py-2 bg-green-500 text-white rounded-md 
+                          hover:bg-green-600 transition-colors duration-200"
+                >
+                  Use Demo Mode
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -108,6 +140,24 @@ const AppContent = () => {
     );
   }
 
+  // If we successfully activated demo mode, proceed to app
+  if (demoMode) {
+    return (
+      <GameProvider>
+        <div className="min-h-screen bg-gray-50">
+          {/* Demo Mode Banner */}
+          <div className="bg-yellow-100 text-yellow-800 px-4 py-2 text-center text-sm">
+            Running in Demo Mode - Using sample data for demonstration purposes
+          </div>
+          <NetworkStatus />
+          <Suspense fallback={<LoadingScreen />}>
+            <AppRouter />
+          </Suspense>
+        </div>
+      </GameProvider>
+    );
+  }
+
   // Display diagnostic error screen
   if (diagnosticResult && !diagnosticResult.success) {
     return (
@@ -123,13 +173,25 @@ const AppContent = () => {
             <p className="text-sm text-gray-500 mb-4">
               Check your Firebase configuration and environment variables.
             </p>
-            <button
-              onClick={handleRetryConnection}
-              className="px-6 py-2 bg-blue-500 text-white rounded-md 
-                       hover:bg-blue-600 transition-colors duration-200"
-            >
-              Retry Connection
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleRetryConnection}
+                className="w-full px-6 py-2 bg-blue-500 text-white rounded-md 
+                        hover:bg-blue-600 transition-colors duration-200"
+              >
+                Retry Connection
+              </button>
+              
+              {diagnosticResult.demoModeAvailable && (
+                <button
+                  onClick={handleActivateDemoMode}
+                  className="w-full px-6 py-2 bg-green-500 text-white rounded-md 
+                          hover:bg-green-600 transition-colors duration-200"
+                >
+                  Continue in Demo Mode
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
