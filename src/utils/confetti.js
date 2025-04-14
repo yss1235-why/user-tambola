@@ -10,6 +10,11 @@ class ConfettiManager {
     this.particles = [];
     this.animationId = null;
     this.isActive = false;
+    this.hasUserInteracted = false;
+  }
+
+  setUserInteracted() {
+    this.hasUserInteracted = true;
   }
 
   initialize() {
@@ -32,6 +37,15 @@ class ConfettiManager {
     
     // Add resize event listener
     window.addEventListener('resize', this.resizeCanvas.bind(this));
+    
+    // Set up user interaction listener if not already set
+    if (!this.hasUserInteracted) {
+      const handleUserInteraction = () => {
+        this.hasUserInteracted = true;
+      };
+      document.addEventListener('click', handleUserInteraction, { once: true });
+      document.addEventListener('touchstart', handleUserInteraction, { once: true });
+    }
   }
 
   resizeCanvas() {
@@ -41,6 +55,12 @@ class ConfettiManager {
   }
 
   start(options = {}) {
+    // If user hasn't interacted, just initialize but don't start animation
+    if (!this.hasUserInteracted) {
+      this.initialize();
+      return;
+    }
+    
     if (this.isActive) return;
     this.isActive = true;
     
@@ -155,5 +175,14 @@ class ConfettiManager {
 
 // Create singleton instance
 const confetti = new ConfettiManager();
+
+// Initialize user interaction detection
+const initializeConfetti = () => {
+  confetti.setUserInteracted();
+};
+
+// Set up event listeners for user interaction
+window.addEventListener('click', initializeConfetti, { once: true });
+window.addEventListener('touchstart', initializeConfetti, { once: true });
 
 export default confetti;
