@@ -1,30 +1,48 @@
-// src/App.jsx
-import React, { Suspense } from 'react';
-import './App.css';
-import { GameProvider } from './context/GameContext';
-import { AuthProvider } from './context/AuthContext';
-import AppRouter from './routes/AppRouter';
-
-// Simple loading spinner component
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="flex flex-col items-center space-y-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      <p className="mt-4 text-gray-600">Loading...</p>
-    </div>
-  </div>
-);
-
-function App() {
-  return (
-    <AuthProvider>
-      <GameProvider>
-        <Suspense fallback={<LoadingSpinner />}>
-          <AppRouter />
-        </Suspense>
-      </GameProvider>
-    </AuthProvider>
-  );
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem; /* Reduced padding for mobile */
+  text-align: center;
 }
 
-export default App;
+@media (min-width: 640px) {
+  #root {
+    padding: 2rem; /* Original padding for larger screens */
+  }
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 1.5em; /* Reduced from 2em */
+}
+
+.read-the-docs {
+  color: #888;
+}
