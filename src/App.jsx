@@ -1,10 +1,10 @@
-// src/App.jsx
+// src/App.jsx - Fix loading screen
 import React, { Suspense, useState, useEffect } from 'react';
 import { GameProvider } from './context/GameContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import appConfig from './config/appConfig';
 
-// Lazy load main components for better performance
+// Lazy load main components
 const AppRouter = React.lazy(() => import('./routes/AppRouter'));
 
 // Loading component for suspense fallback
@@ -21,17 +21,55 @@ const LoadingScreen = () => (
 const AppContent = () => {
   const { currentUser, loading: authLoading, error: authError, refreshAuth } = useAuth();
   const [connectionError, setConnectionError] = useState(null);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   // Set the document title
   useEffect(() => {
     document.title = appConfig.appText.websiteTitle;
   }, []);
 
+  // Set a timeout for loading to avoid infinite spinner
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (authLoading) {
+        setLoadingTimeout(true);
+      }
+    }, 15000); // 15 seconds timeout
+    
+    return () => clearTimeout(timeoutId);
+  }, [authLoading]);
+
   // Handle retry
   const handleRetryConnection = () => {
-    refreshAuth(); // Refresh authentication
+    refreshAuth();
     setConnectionError(null);
+    setLoadingTimeout(false);
   };
+
+  // If loading timeout occurred, show retry button
+  if (loadingTimeout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+              Connection Issues
+            </h2>
+            <p className="text-gray-600 mb-6">
+              The connection is taking longer than expected. This might be due to network issues.
+            </p>
+            <button
+              onClick={handleRetryConnection}
+              className="px-6 py-2 bg-blue-500 text-white rounded-md 
+                      hover:bg-blue-600 transition-colors duration-200"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Display authentication loading screen
   if (authLoading) {
@@ -64,6 +102,13 @@ const AppContent = () => {
             >
               Retry Connection
             </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-6 py-2 bg-gray-200 text-gray-800 rounded-md 
+                      hover:bg-gray-300 transition-colors duration-200"
+            >
+              Reload Page
+            </button>
           </div>
         </div>
       </div>
@@ -89,13 +134,20 @@ const AppContent = () => {
             >
               Retry Connection
             </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-6 py-2 bg-gray-200 text-gray-800 rounded-md 
+                      hover:bg-gray-300 transition-colors duration-200"
+            >
+              Reload Page
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Normal application rendering
+  // Normal application rendering - proceed even if auth failed
   return (
     <GameProvider onError={setConnectionError}>
       <div className="min-h-screen bg-gray-50">
