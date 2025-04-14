@@ -1,5 +1,5 @@
 // src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { auth, signInAnonymousUser, getCurrentUser } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -9,15 +9,26 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [authAttempted, setAuthAttempted] = useState(false);
+  const isMounted = useRef(true);
+  const authInitialized = useRef(false);
+
+  // Handle component unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Set up auth state listener
   useEffect(() => {
+    if (authInitialized.current) return;
+    authInitialized.current = true;
+    
     console.log("Setting up auth state listener");
     
     // Set a timeout to prevent hanging
     const timeoutId = setTimeout(() => {
-      if (loading && !authAttempted) {
+      if (isMounted.current && loading) {
         console.log("Auth initialization timed out, proceeding with anonymous auth");
         handleAnonymousAuth();
       }
@@ -27,30 +38,29 @@ export const AuthProvider = ({ children }) => {
       auth, 
       (user) => {
         clearTimeout(timeoutId);
+        if (!isMounted.current) return;
+        
         if (user) {
           console.log("Auth state changed - user authenticated:", user.uid);
           setCurrentUser(user);
+          setLoading(false);
         } else {
           console.log("Auth state changed - no authenticated user");
           setCurrentUser(null);
           
-          // If no user and not attempted yet, try anonymous auth
-          if (!authAttempted) {
-            handleAnonymousAuth();
-          }
+          // If no user, try anonymous auth immediately
+          handleAnonymousAuth();
         }
-        setLoading(false);
       },
       (error) => {
         clearTimeout(timeoutId);
+        if (!isMounted.current) return;
+        
         console.error("Auth state change error:", error);
         setError(error.message);
-        setLoading(false);
         
-        // Attempt anonymous auth on error
-        if (!authAttempted) {
-          handleAnonymousAuth();
-        }
+        // Try anonymous auth even on error
+        handleAnonymousAuth();
       }
     );
 
@@ -58,60 +68,51 @@ export const AuthProvider = ({ children }) => {
       clearTimeout(timeoutId);
       unsubscribe();
     };
-  }, [authAttempted]);
+  }, []);
 
   // Handle anonymous authentication
   const handleAnonymousAuth = async () => {
-    setAuthAttempted(true);
+    if (!isMounted.current) return;
     
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Try to use existing session first
-      const existingUser = await getCurrentUser();
-      if (existingUser) {
-        console.log("Using existing user:", existingUser.uid);
-        setCurrentUser(existingUser);
-        setLoading(false);
-        return;
-      }
-      
-      // Create new anonymous user
       const user = await signInAnonymousUser();
-      if (user) {
-        console.log("Created new anonymous user:", user.uid);
+      if (user && isMounted.current) {
         setCurrentUser(user);
-      } else {
-        // Even if auth fails, we should continue loading the app
-        setError("Anonymous authentication failed, some features may be limited");
       }
     } catch (error) {
-      console.error("Anonymous auth error:", error);
-      setError("Authentication error: " + error.message);
+      if (isMounted.current) {
+        setError("Authentication error: " + error.message);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
   // Function to refresh authentication if needed
   const refreshAuth = async () => {
+    if (!isMounted.current) return;
+    
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Try to authenticate again
       const user = await signInAnonymousUser();
-      if (user) {
+      if (user && isMounted.current) {
         setCurrentUser(user);
-      } else {
+      } else if (isMounted.current) {
         setError("Failed to refresh authentication");
       }
     } catch (error) {
-      console.error("Auth refresh error:", error);
-      setError(error.message);
+      if (isMounted.current) {
+        console.error("Auth refresh error:", error);
+        setError(error.message);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
