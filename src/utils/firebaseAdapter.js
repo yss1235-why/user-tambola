@@ -15,6 +15,11 @@ export const normalizeGameData = (gameData) => {
   // Clone the data to avoid mutating the original
   const normalizedData = { ...gameData };
   
+  // Ensure game has an ID
+  if (!normalizedData.id) {
+    normalizedData.id = Date.now().toString();
+  }
+  
   // Normalize gameState
   if (!normalizedData.gameState) {
     normalizedData.gameState = { phase: 1, status: 'setup' };
@@ -66,16 +71,48 @@ export const normalizeGameData = (gameData) => {
         .filter(ticket => ticket !== null)
         .map(ticket => {
           // Ensure each ticket has required fields
-          if (!ticket.bookingDetails && ticket.status === 'booked') {
-            ticket.bookingDetails = { playerName: 'Unknown Player', timestamp: Date.now() };
+          if (!ticket) return null;
+          
+          // Create a copy to avoid mutation
+          const ticketCopy = { ...ticket };
+          
+          // Ensure ticket has an ID
+          if (!ticketCopy.id) {
+            ticketCopy.id = `ticket-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
           }
-          return ticket;
-        });
+          
+          // Add gameId reference to help with ticket verification
+          ticketCopy.gameId = normalizedData.id;
+          
+          // Ensure ticket has booking details if needed
+          if (!ticketCopy.bookingDetails && ticketCopy.status === 'booked') {
+            ticketCopy.bookingDetails = { playerName: 'Unknown Player', timestamp: Date.now() };
+          }
+          
+          return ticketCopy;
+        })
+        .filter(ticket => ticket !== null); // Filter out any nulls created during mapping
     }
     
     // Ensure bookings array exists
     if (!normalizedData.activeTickets.bookings) {
       normalizedData.activeTickets.bookings = [];
+    } else if (Array.isArray(normalizedData.activeTickets.bookings)) {
+      // Filter out null entries and add gameId reference
+      normalizedData.activeTickets.bookings = normalizedData.activeTickets.bookings
+        .filter(booking => booking !== null)
+        .map(booking => {
+          if (!booking) return null;
+          
+          // Create a copy to avoid mutation
+          const bookingCopy = { ...booking };
+          
+          // Add gameId reference to help with booking verification
+          bookingCopy.gameId = normalizedData.id;
+          
+          return bookingCopy;
+        })
+        .filter(booking => booking !== null);
     }
   }
   
@@ -100,17 +137,32 @@ export const normalizeGameData = (gameData) => {
 /**
  * Normalizes ticket data for display and processing
  * @param {Array} tickets - Raw tickets data from Firebase
+ * @param {string} gameId - Current game ID for verification (optional)
  * @returns {Array} - Normalized tickets array
  */
-export const normalizeTickets = (tickets) => {
+export const normalizeTickets = (tickets, gameId = null) => {
   if (!tickets || !Array.isArray(tickets)) return [];
   
   // Filter out null entries and normalize structure
   return tickets
     .filter(ticket => ticket !== null)
     .map(ticket => {
+      // Skip if completely invalid
+      if (!ticket) return null;
+      
       // Clone to avoid mutations
       const normalizedTicket = { ...ticket };
+      
+      // Clean up booking status for new games
+      // If a gameId is provided and doesn't match ticket's gameId,
+      // and ticket is from a different game, reset its booking status
+      if (gameId && 
+          normalizedTicket.gameId && 
+          normalizedTicket.gameId !== gameId) {
+        console.log(`Ticket ${normalizedTicket.id} belongs to a different game. Resetting booking status.`);
+        normalizedTicket.status = 'available';
+        delete normalizedTicket.bookingDetails;
+      }
       
       // Ensure ticket has required fields
       if (!normalizedTicket.bookingDetails && normalizedTicket.status === 'booked') {
@@ -118,7 +170,8 @@ export const normalizeTickets = (tickets) => {
       }
       
       return normalizedTicket;
-    });
+    })
+    .filter(ticket => ticket !== null); // Remove any null results
 };
 
 /**
