@@ -1,4 +1,4 @@
-// src/components/game/TicketSearch.jsx - Remove duplicate available tickets
+// src/components/game/TicketSearch.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useGame } from '../../context/GameContext';
 import TicketCard from './TicketCard';
@@ -29,7 +29,7 @@ const TicketSearch = () => {
     
     // Find the matching ticket first (by ID or player name)
     const exactMatches = tickets.filter(ticket => {
-      // Check ticket ID (exact match)
+      // Check ticket ID (strict exact match)
       if (ticket.id && ticket.id.toString() === normalizedQuery) {
         return true;
       }
@@ -65,20 +65,24 @@ const TicketSearch = () => {
       
       // Get all player names from the exact matches
       const playerNames = new Set();
+      const playerTickets = new Set(); // Track tickets explicitly belonging to players
       
       exactMatches.forEach(ticket => {
-        // Add player name from ticket booking details
+        // Keep track of this exact ticket ID
+        playerTickets.add(ticket.id.toString());
+        
+        // Get player name from ticket booking details
         if (ticket.bookingDetails?.playerName) {
           playerNames.add(ticket.bookingDetails.playerName.toLowerCase());
-        }
-        
-        // Also check the bookings array
-        if (currentGame.activeTickets?.bookings) {
-          const booking = currentGame.activeTickets.bookings.find(
-            b => b && b.number && b.number.toString() === ticket.id.toString()
-          );
-          if (booking && booking.playerName) {
-            playerNames.add(booking.playerName.toLowerCase());
+        } else {
+          // For tickets without booking details, check bookings array
+          if (currentGame.activeTickets?.bookings) {
+            const booking = currentGame.activeTickets.bookings.find(
+              b => b && b.number && b.number.toString() === ticket.id.toString()
+            );
+            if (booking && booking.playerName) {
+              playerNames.add(booking.playerName.toLowerCase());
+            }
           }
         }
       });
@@ -86,13 +90,18 @@ const TicketSearch = () => {
       // If we have player names, find all their tickets
       if (playerNames.size > 0) {
         const allPlayerTickets = tickets.filter(ticket => {
-          // Check ticket booking details
+          // Include the exact ticket matches regardless of player
+          if (playerTickets.has(ticket.id.toString())) {
+            return true;
+          }
+          
+          // Check ticket booking details for player name match
           if (ticket.bookingDetails?.playerName && 
               playerNames.has(ticket.bookingDetails.playerName.toLowerCase())) {
             return true;
           }
           
-          // Check bookings array
+          // Check bookings array for player name match
           if (currentGame.activeTickets?.bookings) {
             const booking = currentGame.activeTickets.bookings.find(
               b => b && b.number && b.number.toString() === ticket.id.toString()
