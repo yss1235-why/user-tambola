@@ -41,6 +41,10 @@ export const GameProvider = ({ children, onError }) => {
     players: false
   });
 
+  // Add refs to track game ID and phase for detecting changes
+  const currentGameIdRef = useRef(null);
+  const currentPhaseRef = useRef(null);
+
   // Set isMounted to false when component unmounts
   useEffect(() => {
     return () => {
@@ -123,11 +127,41 @@ export const GameProvider = ({ children, onError }) => {
               const gameData = normalizeGameData(rawGameData);
               dataReceived.current.game = true;
               
+              // Check for game ID or phase changes
+              const newGameId = gameData.id || rawGameData.id || Date.now().toString();
+              const newPhase = gameData.gameState?.phase || 1;
+              
+              // Detect game change or phase change
+              const gameChanged = currentGameIdRef.current !== null && 
+                                 currentGameIdRef.current !== newGameId;
+              const phaseChanged = currentPhaseRef.current !== null && 
+                                  currentPhaseRef.current !== newPhase;
+              
+              // If game or phase changed, clear ticket data
+              if (gameChanged || phaseChanged) {
+                console.log(`Game ${gameChanged ? 'ID' : 'phase'} changed. Resetting ticket data.`);
+                
+                // Reset ticket data
+                setGameState(prev => ({
+                  ...prev,
+                  tickets: [],
+                  bookings: {}
+                }));
+                
+                // Set flags to wait for new data
+                dataReceived.current.tickets = false;
+                dataReceived.current.bookings = false;
+              }
+              
+              // Update refs with current values
+              currentGameIdRef.current = newGameId;
+              currentPhaseRef.current = newPhase;
+              
               setGameState(prev => ({
                 ...prev,
                 error: null,
                 currentGame: gameData,
-                phase: gameData.gameState?.phase || 1,
+                phase: newPhase,
                 calledNumbers: normalizeCalledNumbers(gameData.numberSystem?.calledNumbers),
                 lastCalledNumber: gameData.numberSystem?.currentNumber,
               }));
@@ -203,6 +237,10 @@ export const GameProvider = ({ children, onError }) => {
             logTicketCount(normalizedTickets);
             dataReceived.current.tickets = true;
             
+            // Get current gameId for verification
+            const currentGameId = currentGameIdRef.current;
+            
+            // Only update tickets if game ID matches or if this is the first load
             setGameState(prev => ({
               ...prev,
               tickets: normalizedTickets,
