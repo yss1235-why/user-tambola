@@ -54,7 +54,7 @@ const TicketSearch = () => {
       return false;
     });
 
-    // If we found at least one match, find all tickets by those players
+    // If we found at least one match
     if (exactMatches.length > 0) {
       // Record this search in history
       setSearchHistory(prev => {
@@ -63,7 +63,22 @@ const TicketSearch = () => {
         return newHistory.slice(0, 10); // Keep only last 10 searches
       });
       
-      // Get all player names from the exact matches
+      // Check if all exact matches are available (unbooked) tickets
+      // If searching for an available ticket, only show that exact ticket
+      const allAvailableTickets = exactMatches.every(ticket => 
+        ticket.status !== 'booked' && !ticket.bookingDetails?.playerName
+      );
+      
+      if (allAvailableTickets) {
+        // For available tickets, only show the exact matches
+        setSearchResults(exactMatches);
+        setIsSearching(false);
+        setShowRecent(false);
+        setActiveView('results');
+        return;
+      }
+      
+      // For booked tickets, get all player names from the exact matches
       const playerNames = new Set();
       const playerTickets = new Set(); // Track tickets explicitly belonging to players
       
@@ -71,7 +86,7 @@ const TicketSearch = () => {
         // Keep track of this exact ticket ID
         playerTickets.add(ticket.id.toString());
         
-        // Get player name from ticket booking details
+        // Add player name from ticket booking details
         if (ticket.bookingDetails?.playerName) {
           playerNames.add(ticket.bookingDetails.playerName.toLowerCase());
         } else {
