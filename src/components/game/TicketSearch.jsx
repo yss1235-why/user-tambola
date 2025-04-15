@@ -14,6 +14,47 @@ const TicketSearch = () => {
   const [searchHistory, setSearchHistory] = useState([]);
   const [activeView, setActiveView] = useState('results'); // 'results', 'recent', 'history'
 
+  // Function to find player name from a ticket ID - matching TicketCard approach
+  const findPlayerName = useCallback((ticketId) => {
+    if (!ticketId || !currentGame) return null;
+    
+    // Convert to string for safer comparison
+    const ticketIdStr = ticketId.toString();
+    
+    // 1. First check in Game Bookings array
+    if (currentGame.activeTickets?.bookings) {
+      const booking = currentGame.activeTickets.bookings.find(
+        b => b && b.number && b.number.toString() === ticketIdStr
+      );
+      if (booking && booking.playerName) {
+        return booking.playerName;
+      }
+    }
+    
+    // 2. Then check in Players collection
+    if (currentGame.players) {
+      for (const playerId in currentGame.players) {
+        const player = currentGame.players[playerId];
+        const playerTickets = player.tickets || [];
+        
+        if (playerTickets.includes(ticketIdStr)) {
+          return player.name;
+        }
+      }
+    }
+    
+    // 3. Finally check ticket's own booking details
+    const ticket = currentGame.activeTickets?.tickets?.find(
+      t => t && t.id && t.id.toString() === ticketIdStr
+    );
+    
+    if (ticket?.bookingDetails?.playerName) {
+      return ticket.bookingDetails.playerName;
+    }
+    
+    return null;
+  }, [currentGame]);
+
   const performSearch = useCallback((query) => {
     // Reset states
     setNoResults(false);
@@ -34,21 +75,12 @@ const TicketSearch = () => {
         return true;
       }
       
-      // Check player name (case-insensitive exact match) if booking details exist
-      if (ticket.bookingDetails?.playerName && 
-          ticket.bookingDetails.playerName.toLowerCase() === normalizedQuery) {
-        return true;
-      }
+      // Get player name using the comprehensive lookup function
+      const playerName = findPlayerName(ticket.id);
       
-      // Also check the bookings array in currentGame if available
-      if (currentGame.activeTickets?.bookings) {
-        const booking = currentGame.activeTickets.bookings.find(
-          b => b && b.number && b.number.toString() === ticket.id.toString()
-        );
-        if (booking && booking.playerName && 
-            booking.playerName.toLowerCase() === normalizedQuery) {
-          return true;
-        }
+      // Check if player name matches query (case-insensitive)
+      if (playerName && playerName.toLowerCase() === normalizedQuery) {
+        return true;
       }
       
       return false;
@@ -64,10 +96,10 @@ const TicketSearch = () => {
       });
       
       // Check if all exact matches are available (unbooked) tickets
-      // If searching for an available ticket, only show that exact ticket
-      const allAvailableTickets = exactMatches.every(ticket => 
-        ticket.status !== 'booked' && !ticket.bookingDetails?.playerName
-      );
+      const allAvailableTickets = exactMatches.every(ticket => {
+        const playerName = findPlayerName(ticket.id);
+        return !playerName && ticket.status !== 'booked';
+      });
       
       if (allAvailableTickets) {
         // For available tickets, only show the exact matches
@@ -86,19 +118,10 @@ const TicketSearch = () => {
         // Keep track of this exact ticket ID
         playerTickets.add(ticket.id.toString());
         
-        // Add player name from ticket booking details
-        if (ticket.bookingDetails?.playerName) {
-          playerNames.add(ticket.bookingDetails.playerName.toLowerCase());
-        } else {
-          // For tickets without booking details, check bookings array
-          if (currentGame.activeTickets?.bookings) {
-            const booking = currentGame.activeTickets.bookings.find(
-              b => b && b.number && b.number.toString() === ticket.id.toString()
-            );
-            if (booking && booking.playerName) {
-              playerNames.add(booking.playerName.toLowerCase());
-            }
-          }
+        // Add player name using the comprehensive lookup function
+        const playerName = findPlayerName(ticket.id);
+        if (playerName) {
+          playerNames.add(playerName.toLowerCase());
         }
       });
       
@@ -110,24 +133,9 @@ const TicketSearch = () => {
             return true;
           }
           
-          // Check ticket booking details for player name match
-          if (ticket.bookingDetails?.playerName && 
-              playerNames.has(ticket.bookingDetails.playerName.toLowerCase())) {
-            return true;
-          }
-          
-          // Check bookings array for player name match
-          if (currentGame.activeTickets?.bookings) {
-            const booking = currentGame.activeTickets.bookings.find(
-              b => b && b.number && b.number.toString() === ticket.id.toString()
-            );
-            if (booking && booking.playerName && 
-                playerNames.has(booking.playerName.toLowerCase())) {
-              return true;
-            }
-          }
-          
-          return false;
+          // Check if this ticket belongs to any of our identified players
+          const ticketPlayerName = findPlayerName(ticket.id);
+          return ticketPlayerName && playerNames.has(ticketPlayerName.toLowerCase());
         });
         
         // Set search results with unique tickets
@@ -143,7 +151,25 @@ const TicketSearch = () => {
     setIsSearching(false);
     setShowRecent(false);
     setActiveView('results');
-  }, [currentGame?.activeTickets?.tickets, currentGame?.activeTickets?.bookings]);
+  }, [currentGame, findPlayerName]);
+
+  // Group tickets by player
+  const groupTicketsByPlayer = useCallback((tickets) => {
+    const groups = {};
+    
+    tickets.forEach(ticket => {
+      // Use the same player name lookup as the search function
+      let playerName = findPlayerName(ticket.id) || 'Unknown';
+      
+      if (!groups[playerName]) {
+        groups[playerName] = [];
+      }
+      
+      groups[playerName].push(ticket);
+    });
+    
+    return groups;
+  }, [findPlayerName]);
 
   // Clear search
   const clearSearch = () => {
@@ -194,37 +220,6 @@ const TicketSearch = () => {
     if (e.key === 'Enter' && searchQuery.trim()) {
       performSearch(searchQuery);
     }
-  };
-
-  // Group tickets by player
-  const groupTicketsByPlayer = (tickets) => {
-    const groups = {};
-    
-    tickets.forEach(ticket => {
-      let playerName = 'Unknown';
-      
-      // Get player name from ticket booking details
-      if (ticket.bookingDetails?.playerName) {
-        playerName = ticket.bookingDetails.playerName;
-      } 
-      // Check bookings array
-      else if (currentGame.activeTickets?.bookings) {
-        const booking = currentGame.activeTickets.bookings.find(
-          b => b && b.number && b.number.toString() === ticket.id.toString()
-        );
-        if (booking && booking.playerName) {
-          playerName = booking.playerName;
-        }
-      }
-      
-      if (!groups[playerName]) {
-        groups[playerName] = [];
-      }
-      
-      groups[playerName].push(ticket);
-    });
-    
-    return groups;
   };
 
   return (
