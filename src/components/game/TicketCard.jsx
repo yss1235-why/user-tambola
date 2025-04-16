@@ -41,7 +41,19 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
 
   // Only show remove button during playing phase when explicitly enabled
   const shouldShowRemoveButton = showRemoveButton && phase === 3;
-  const isBooked = ticket.status === 'booked';
+  
+  // CRITICAL FIX: Modify how booking status is determined based on game phase
+  // In booking phase (phase 2), all tickets should initially appear as available
+  const isBookingPhase = phase === 2;
+  const bookingPhaseStartTime = parseInt(localStorage.getItem('bookingPhaseStartTime') || '0');
+  const now = Date.now();
+  
+  // Consider tickets available during a window after transitioning to booking phase
+  const isNewGame = (now - bookingPhaseStartTime < 60000) || // 1-minute window
+                   (currentGame?.numberSystem?.calledNumbers?.length === 0 && isBookingPhase);
+                   
+  // Force tickets to show as available during booking phase of a new game
+  const isBooked = (isBookingPhase && isNewGame) ? false : ticket.status === 'booked';
 
   // Ensure we have the complete ticket data with numbers
   useEffect(() => {
@@ -96,7 +108,10 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
 
   // Find player name from the Players object
   useEffect(() => {
-    if (!ticket || !ticket.id) return;
+    if (!ticket || !ticket.id || (isBookingPhase && isNewGame)) {
+      setPlayerName(null);
+      return;
+    }
     
     // First check bookings if available
     if (currentGame?.activeTickets?.bookings) {
@@ -125,7 +140,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     
     // Default to null if no player found
     setPlayerName(null);
-  }, [ticket, currentGame, players]);
+  }, [ticket, currentGame, players, isBookingPhase, isNewGame]);
 
   const ticketStats = useMemo(() => {
     if (!ticketData?.numbers) return { total: 0, matched: 0 };
@@ -157,6 +172,17 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     }
   };
 
+  // Store the booking phase start time when entering booking phase
+  useEffect(() => {
+    if (isBookingPhase && !localStorage.getItem('bookingPhaseStartTime')) {
+      localStorage.setItem('bookingPhaseStartTime', Date.now().toString());
+      console.log('Booking phase detected, timestamp stored:', new Date().toLocaleTimeString());
+    } else if (phase === 3) {
+      // Clear the timestamp when entering playing phase
+      localStorage.removeItem('bookingPhaseStartTime');
+    }
+  }, [isBookingPhase, phase]);
+
   if (!ticketData) return null;
 
   return (
@@ -178,7 +204,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
                 </span>
               )}
             </div>
-            {playerName && (
+            {playerName && !isNewGame && (
               <span className="text-xs text-blue-100">
                 {playerName}
               </span>
