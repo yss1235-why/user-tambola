@@ -84,8 +84,8 @@ const NumberDisplay = () => {
   if (phase !== 3) {
     return (
       <div className="card animate-fade-in shadow-sm">
-        <div className="p-4 text-center">
-          <h2 className="text-base font-semibold text-gray-900 mb-2">
+        <div className="p-1 sm:p-4 text-center">
+          <h2 className="text-base font-semibold text-gray-900 mb-1 sm:mb-2">
             Game Status
           </h2>
           <p className="text-sm text-gray-600">
@@ -99,7 +99,7 @@ const NumberDisplay = () => {
   return (
     <div className="card animate-fade-in shadow-sm">
       {/* Current Number Display */}
-      <div className="p-4 border-b border-gray-100">
+      <div className="p-1 sm:p-4 border-b border-gray-100">
         <CurrentNumberDisplay 
           number={previousNumber} 
           isAnimating={isAnimating}
@@ -107,8 +107,8 @@ const NumberDisplay = () => {
       </div>
 
       {/* Recent Numbers */}
-      <div className="bg-gray-50 p-3">
-        <h3 className="text-xs font-medium text-gray-700 mb-2">
+      <div className="bg-gray-50 p-1 sm:p-3">
+        <h3 className="text-xs font-medium text-gray-700 mb-1 sm:mb-2">
           Recent Numbers
         </h3>
         <RecentNumbersList numbers={recentNumbers} />
@@ -116,7 +116,7 @@ const NumberDisplay = () => {
 
       {/* Game Progress */}
       {currentGame?.numberSystem?.calledNumbers && (
-        <div className="px-3 py-2 border-t border-gray-100">
+        <div className="px-1 sm:px-3 py-1 sm:py-2 border-t border-gray-100">
           <div className="flex justify-between items-center text-xs text-gray-600">
             <span>
               Called: {currentGame.numberSystem.calledNumbers.length}
