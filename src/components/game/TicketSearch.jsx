@@ -56,7 +56,7 @@ const TicketSearch = () => {
   }, [currentGame]);
 
   const performSearch = useCallback((query) => {
-    // Reset states
+    // Reset no results state
     setNoResults(false);
     setIsSearching(true);
     
@@ -101,49 +101,59 @@ const TicketSearch = () => {
         return !playerName && ticket.status !== 'booked';
       });
       
+      let newResults = [];
+      
       if (allAvailableTickets) {
-        // For available tickets, only show the exact matches
-        setSearchResults(exactMatches);
-        setIsSearching(false);
-        setShowRecent(false);
-        setActiveView('results');
-        return;
-      }
-      
-      // For booked tickets, get all player names from the exact matches
-      const playerNames = new Set();
-      const playerTickets = new Set(); // Track tickets explicitly belonging to players
-      
-      exactMatches.forEach(ticket => {
-        // Keep track of this exact ticket ID
-        playerTickets.add(ticket.id.toString());
+        // For available tickets, only include the exact matches
+        newResults = exactMatches;
+      } else {
+        // For booked tickets, get all player names from the exact matches
+        const playerNames = new Set();
+        const playerTickets = new Set(); // Track tickets explicitly belonging to players
         
-        // Add player name using the comprehensive lookup function
-        const playerName = findPlayerName(ticket.id);
-        if (playerName) {
-          playerNames.add(playerName.toLowerCase());
-        }
-      });
-      
-      // If we have player names, find all their tickets
-      if (playerNames.size > 0) {
-        const allPlayerTickets = tickets.filter(ticket => {
-          // Include the exact ticket matches regardless of player
-          if (playerTickets.has(ticket.id.toString())) {
-            return true;
-          }
+        exactMatches.forEach(ticket => {
+          // Keep track of this exact ticket ID
+          playerTickets.add(ticket.id.toString());
           
-          // Check if this ticket belongs to any of our identified players
-          const ticketPlayerName = findPlayerName(ticket.id);
-          return ticketPlayerName && playerNames.has(ticketPlayerName.toLowerCase());
+          // Add player name using the comprehensive lookup function
+          const playerName = findPlayerName(ticket.id);
+          if (playerName) {
+            playerNames.add(playerName.toLowerCase());
+          }
         });
         
-        // Set search results with unique tickets
-        setSearchResults(allPlayerTickets);
-      } else {
-        // If no player names found, just add the exact ticket matches
-        setSearchResults(exactMatches);
+        // If we have player names, find all their tickets
+        if (playerNames.size > 0) {
+          newResults = tickets.filter(ticket => {
+            // Include the exact ticket matches regardless of player
+            if (playerTickets.has(ticket.id.toString())) {
+              return true;
+            }
+            
+            // Check if this ticket belongs to any of our identified players
+            const ticketPlayerName = findPlayerName(ticket.id);
+            return ticketPlayerName && playerNames.has(ticketPlayerName.toLowerCase());
+          });
+        } else {
+          // If no player names found, just include the exact ticket matches
+          newResults = exactMatches;
+        }
       }
+      
+      // CHANGED: Add new results to existing results, avoiding duplicates
+      setSearchResults(prevResults => {
+        // Create a Set of existing ticket IDs for easy lookup
+        const existingTicketIds = new Set(prevResults.map(ticket => ticket.id.toString()));
+        
+        // Filter out any tickets that already exist in the results
+        const uniqueNewResults = newResults.filter(
+          ticket => !existingTicketIds.has(ticket.id.toString())
+        );
+        
+        // Combine previous results with new unique results
+        return [...prevResults, ...uniqueNewResults];
+      });
+      
     } else {
       setNoResults(true);
     }
@@ -171,16 +181,14 @@ const TicketSearch = () => {
     return groups;
   }, [findPlayerName]);
 
-  // Clear search
+  // Clear search input only (keep results)
   const clearSearch = () => {
     setSearchQuery('');
     setNoResults(false);
-    setShowRecent(true);
-    setIsSearching(false);
-    setActiveView('recent');
+    setActiveView('results');
   };
 
-  // Clear search results only (keep query)
+  // Clear search results only
   const clearSearchResults = () => {
     setSearchResults([]);
     setNoResults(false);
@@ -341,7 +349,7 @@ const TicketSearch = () => {
                 <h3 className="text-sm font-medium text-gray-700">
                   Results ({searchResults.length})
                 </h3>
-                {searchResults.length > 1 && (
+                {searchResults.length > 0 && (
                   <button
                     onClick={clearSearchResults}
                     className="text-xs text-gray-500 hover:text-gray-700 flex items-center"
@@ -359,7 +367,7 @@ const TicketSearch = () => {
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
                       />
                     </svg>
-                    Clear results
+                    Clear all results
                   </button>
                 )}
               </div>
@@ -387,12 +395,20 @@ const TicketSearch = () => {
           )}
 
           {/* No results message */}
-          {noResults && !isSearching && (
+          {noResults && !isSearching && searchResults.length === 0 && (
             <div className="text-center py-3 sm:py-6 px-2 sm:px-4 bg-gray-50">
               <p className="text-sm text-gray-600">No tickets found matching your search.</p>
               <p className="text-xs text-gray-500 mt-1 sm:mt-2">
                 Search requires exact matches for ticket number or player name.
               </p>
+            </div>
+          )}
+
+          {/* No results message for current search but with previous results */}
+          {noResults && !isSearching && searchResults.length > 0 && (
+            <div className="text-center py-2 px-2 m-1 sm:m-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">No tickets found for "{searchQuery}"</p>
+              <p className="text-xs text-gray-500">Displaying previous search results.</p>
             </div>
           )}
 
