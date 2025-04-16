@@ -136,91 +136,89 @@ export const normalizeGameData = (gameData) => {
 
 /**
  * Normalizes ticket data for display and processing
- * with improved handling of tickets from previous games
+ * with improved handling of data synchronization issues
  * @param {Array} tickets - Raw tickets data from Firebase
- * @param {string} currentGameId - Current game ID for verification
+ * @param {Object} gameState - Current game state for reference
  * @returns {Array} - Normalized tickets array
  */
-export const normalizeTickets = (tickets, currentGameId = null) => {
+export const normalizeTickets = (tickets, gameState = null) => {
   if (!tickets || !Array.isArray(tickets)) return [];
   
-  // Get current phase from context if available
-  let currentPhase = null;
-  try {
-    // Try to get the current game phase from the application state
-    // This won't work in a pure utility function, but might in context
-    const gameState = window.__GAME_STATE;
-    if (gameState && gameState.phase) {
-      currentPhase = gameState.phase;
+  // Get current game phase (if available)
+  let currentPhase = gameState?.phase;
+  
+  // Try to get phase from window global if not provided
+  if (!currentPhase && typeof window !== 'undefined') {
+    try {
+      currentPhase = window.__GAME_STATE?.phase;
+    } catch (e) {
+      // Ignore errors
     }
-  } catch (e) {
-    // Ignore any errors
   }
   
-  // Store timestamp of when we detected a phase change to booking (phase 2)
-  const now = Date.now();
-  let currentGameStartTime = parseInt(localStorage.getItem('currentGameStartTime') || '0');
+  // Check if we're in booking phase
+  const isBookingPhase = currentPhase === 2;
   
-  // If we're in booking phase and don't have a recent start time, update it
-  if (currentPhase === 2 && (!currentGameStartTime || currentGameStartTime < now - 86400000)) {
-    currentGameStartTime = now;
-    localStorage.setItem('currentGameStartTime', now.toString());
+  // Handle booking phase synchronization
+  if (isBookingPhase) {
+    const now = Date.now();
+    
+    // Get timestamp of when we first detected booking phase
+    let bookingPhaseStartTime = parseInt(localStorage.getItem('bookingPhaseStartTime') || '0');
+    
+    // If this is a newly detected booking phase, store the timestamp
+    if (bookingPhaseStartTime === 0) {
+      bookingPhaseStartTime = now;
+      localStorage.setItem('bookingPhaseStartTime', bookingPhaseStartTime.toString());
+      console.log('New booking phase detected at:', new Date(bookingPhaseStartTime).toLocaleTimeString());
+    }
+    
+    // Check if called numbers array is empty (indicator of new game)
+    const isNewGame = gameState?.calledNumbers?.length === 0 || 
+                      window.__GAME_STATE?.isNewGame === true;
+    
+    // Check if this is a recent transition to booking phase
+    const syncWindow = 20000; // 20 seconds sync window
+    const isRecentTransition = (now - bookingPhaseStartTime) < syncWindow;
+    
+    // If we're in a sync window for a new game, ALL tickets should be available
+    const shouldResetAllTickets = isBookingPhase && (isRecentTransition || isNewGame);
+    
+    if (shouldResetAllTickets) {
+      console.log('In booking phase sync window, resetting all tickets to available');
+      
+      return tickets
+        .filter(ticket => ticket !== null)
+        .map(ticket => {
+          // Clone to avoid mutations
+          const normalizedTicket = { ...ticket };
+          
+          // Store original status for debugging
+          normalizedTicket._originalStatus = normalizedTicket.status;
+          normalizedTicket._originalBookingDetails = normalizedTicket.bookingDetails;
+          
+          // Reset ALL tickets to available during sync window
+          normalizedTicket.status = 'available';
+          normalizedTicket.bookingDetails = null;
+          
+          return normalizedTicket;
+        })
+        .filter(ticket => ticket !== null);
+    }
+  } else if (currentPhase === 3) {
+    // If we're in playing phase, clear the booking phase timestamp
+    localStorage.removeItem('bookingPhaseStartTime');
   }
   
-  // Filter out null entries and normalize structure
+  // Standard normalization for cases outside booking phase or sync window
   return tickets
     .filter(ticket => ticket !== null)
     .map(ticket => {
       // Clone to avoid mutations
       const normalizedTicket = { ...ticket };
-      
-      // CRITICAL FIX: Detect stale booking data from previous games
-      let isStaleBooking = false;
-      
-      // Method 1: Check if we're in booking phase (phase 2)
-      if (currentPhase === 2) {
-        // If we're in booking phase and ticket has a different game ID, consider it stale
-        if (currentGameId && normalizedTicket.gameId && 
-            normalizedTicket.gameId !== currentGameId) {
-          isStaleBooking = true;
-        }
-        
-        // If booking timestamp exists and is older than current game start time
-        if (normalizedTicket.bookingDetails?.timestamp && 
-            normalizedTicket.bookingDetails.timestamp < currentGameStartTime) {
-          isStaleBooking = true;
-        }
-        
-        // If we're in a new booking phase and this ticket is marked as booked
-        // but doesn't have a matching game ID, consider it a stale booking
-        if (currentGameId && normalizedTicket.status === 'booked' && 
-            (!normalizedTicket.gameId || normalizedTicket.gameId !== currentGameId)) {
-          isStaleBooking = true;
-        }
-        
-        // If the game is in booking phase and calledNumbers is empty,
-        // this is likely a new game, so mark all booked tickets as stale
-        if (normalizedTicket.status === 'booked' && currentGameStartTime > now - 3600000) {
-          isStaleBooking = true;
-        }
-      }
-      
-      // Reset booking status for stale bookings without modifying the original data
-      if (isStaleBooking && normalizedTicket.status === 'booked') {
-        console.log(`Detected stale booking for ticket ${normalizedTicket.id}, showing as available`);
-        
-        // Store original data for reference but don't display it
-        normalizedTicket._originalStatus = normalizedTicket.status;
-        normalizedTicket._originalBookingDetails = { ...normalizedTicket.bookingDetails };
-        
-        // Override the display status
-        normalizedTicket.status = 'available';
-        normalizedTicket.bookingDetails = null;
-      }
-      
       return normalizedTicket;
     })
-    .filter(ticket => ticket !== null); // Remove any null results
+    .filter(ticket => ticket !== null);
 };
 
 /**
