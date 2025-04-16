@@ -35,7 +35,7 @@ const LastCalledNumber = ({ number }) => {
   if (!number) return null;
 
   return (
-    <div className="bg-blue-50 p-2 sm:p-3 rounded-lg text-center">
+    <div className="bg-blue-50 p-1 sm:p-3 rounded-lg text-center">
       <p className="text-xs text-blue-600 font-medium">Last Called</p>
       <div className="text-2xl sm:text-3xl font-bold text-blue-700 animate-bounce-slow">
         {number}
@@ -50,7 +50,7 @@ const GameStats = ({ calledCount }) => {
   const percentage = Math.round((calledCount / total) * 100);
 
   return (
-    <div className="grid grid-cols-3 gap-2 text-center p-2 sm:p-3 bg-gray-50 rounded-lg">
+    <div className="grid grid-cols-3 gap-1 sm:gap-2 text-center p-1 sm:p-3 bg-gray-50 rounded-lg">
       <div>
         <p className="text-xs text-gray-600">Called</p>
         <p className="text-sm font-semibold text-blue-600">{calledCount}</p>
@@ -92,8 +92,8 @@ const NumberBoard = () => {
   if (!isPlayingPhase) {
     return (
       <div className="card shadow-sm animate-fade-in">
-        <div className="p-3 sm:p-4 text-center">
-          <h2 className="text-base font-semibold text-gray-900 mb-2">
+        <div className="p-1 sm:p-4 text-center">
+          <h2 className="text-base font-semibold text-gray-900 mb-1 sm:mb-2">
             Game Status
           </h2>
           <p className="text-sm text-gray-600">
@@ -106,7 +106,7 @@ const NumberBoard = () => {
 
   return (
     <div className="card shadow-sm overflow-hidden animate-fade-in">
-      <div className="space-y-2 sm:space-y-3 p-2 sm:p-3">
+      <div className="space-y-1 sm:space-y-3 p-1 sm:p-3">
         {/* Last Called Number Display */}
         <LastCalledNumber number={lastCalledNumber} />
 
@@ -135,8 +135,8 @@ const NumberBoard = () => {
       </div>
 
       {/* Mobile-friendly recent numbers list */}
-      <div className="border-t border-gray-100 p-2 sm:p-3 bg-gray-50">
-        <p className="text-xs font-medium text-gray-600 mb-2 text-center">Recent Numbers</p>
+      <div className="border-t border-gray-100 p-1 sm:p-3 bg-gray-50">
+        <p className="text-xs font-medium text-gray-600 mb-1 sm:mb-2 text-center">Recent Numbers</p>
         <RecentNumbersList numbers={[...calledNumbers].reverse().slice(0, 10)} />
       </div>
     </div>
