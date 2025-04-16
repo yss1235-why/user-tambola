@@ -140,7 +140,7 @@ const TicketSearch = () => {
         }
       }
       
-      // CHANGED: Add new results to existing results, avoiding duplicates
+      // Add new results to existing results, avoiding duplicates
       setSearchResults(prevResults => {
         // Create a Set of existing ticket IDs for easy lookup
         const existingTicketIds = new Set(prevResults.map(ticket => ticket.id.toString()));
@@ -344,7 +344,7 @@ const TicketSearch = () => {
         <>
           {/* Search results */}
           {searchResults.length > 0 && (
-            <div className="p-1 sm:p-3">
+            <div className="p-0.5 sm:p-1">
               <div className="flex justify-between items-center mb-1 sm:mb-3">
                 <h3 className="text-sm font-medium text-gray-700">
                   Results ({searchResults.length})
