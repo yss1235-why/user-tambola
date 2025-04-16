@@ -1,7 +1,7 @@
 // src/components/game/WinnersDisplay.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../../context/GameContext';
-import { announceNumber } from '../../utils/audio';
+import { announceNumber, announcePrize } from '../../utils/audio';
 
 const PRIZE_CONFIG = {
   quickFive: { 
@@ -419,7 +419,7 @@ const WinnersDisplay = ({ previousGameData, currentGame, showPrevious = false })
            newLatestWinner.ticketId !== latestWinner.ticketId))) {
         // Announce the winner if we're in playing phase and user has interacted
         if (gameContext.phase === 3 && hasInteracted) {
-          announceNumber(newLatestWinner.prizeType, newLatestWinner.playerName);
+          announcePrize(newLatestWinner.prizeType, newLatestWinner.playerName);
         }
         setLatestWinner(newLatestWinner);
       }
