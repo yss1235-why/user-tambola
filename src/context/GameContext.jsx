@@ -320,4 +320,74 @@ export const GameProvider = ({ children, onError }) => {
             loading: false,
             error: 'Error initializing game data: ' + error.message,
           }));
-          if (on
+          if (onError) onError('Error initializing game data: ' + error.message);
+        }
+      }
+    };
+    
+    // Set up listeners
+    setupListeners();
+    
+    // Clean up function to properly remove listeners on unmount
+    return () => {
+      console.log("Cleaning up Firebase listeners");
+      if (timeoutId.current) {
+        clearTimeout(timeoutId.current);
+      }
+      if (unsubscribers.current.game) unsubscribers.current.game();
+      if (unsubscribers.current.bookings) unsubscribers.current.bookings();
+      if (unsubscribers.current.tickets) unsubscribers.current.tickets();
+      if (unsubscribers.current.players) unsubscribers.current.players();
+      listenersActive.current = false;
+    };
+  }, []); // Empty dependency array to ensure this runs only once
+
+  const value = {
+    ...gameState,
+    // Provide activeTickets for backward compatibility
+    activeTickets: gameState.tickets,
+    isNumberCalled: (number) => gameState.calledNumbers.includes(number),
+    isGameActive: !!gameState.currentGame,
+    isBookingPhase: gameState.phase === appConfig.gameConstants.phases.BOOKING,
+    isPlayingPhase: gameState.phase === appConfig.gameConstants.phases.PLAYING,
+    // Make phase constants available in the context
+    phases: appConfig.gameConstants.phases,
+    // Provide text configuration for components
+    appText: appConfig.appText,
+    // Utility function to get player name by ticket ID
+    getPlayerNameByTicket: (ticketId) => {
+      // First check in players
+      const players = gameState.players;
+      for (const playerId in players) {
+        const playerTickets = players[playerId].tickets || [];
+        if (playerTickets.includes(ticketId.toString())) {
+          return players[playerId].name;
+        }
+      }
+      
+      // Then check in bookings
+      if (gameState.bookings && Array.isArray(gameState.bookings)) {
+        const booking = gameState.bookings.find(
+          b => b && b.number && b.number.toString() === ticketId.toString()
+        );
+        if (booking && booking.playerName) {
+          return booking.playerName;
+        }
+      }
+      
+      return null;
+    }
+  };
+
+  return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
+};
+
+export const useGame = () => {
+  const context = useContext(GameContext);
+  if (!context) {
+    throw new Error('useGame must be used within a GameProvider');
+  }
+  return context;
+};
+
+export default GameContext;
