@@ -378,7 +378,7 @@ const TicketSearch = () => {
                   <div className="border-l-4 border-blue-500 pl-1 sm:pl-3 mb-1 sm:mb-2">
                     <h4 className="text-sm font-medium text-gray-800">{playerName}'s Tickets ({tickets.length})</h4>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-1 sm:gap-3">
                     {tickets.map(ticket => (
                       <div key={ticket.id} onClick={() => handleTicketSelect(ticket)}>
                         <TicketCard 
