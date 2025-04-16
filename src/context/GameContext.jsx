@@ -44,6 +44,7 @@ export const GameProvider = ({ children, onError }) => {
   // Add refs to track game ID and phase for detecting changes
   const currentGameIdRef = useRef(null);
   const currentPhaseRef = useRef(null);
+  const previousCalledNumbersRef = useRef([]);
 
   // Set isMounted to false when component unmounts
   useEffect(() => {
@@ -130,6 +131,7 @@ export const GameProvider = ({ children, onError }) => {
               // Check for game ID or phase changes
               const newGameId = gameData.id || rawGameData.id || Date.now().toString();
               const newPhase = gameData.gameState?.phase || 1;
+              const calledNumbers = gameData.numberSystem?.calledNumbers || [];
               
               // Detect game change or phase change
               const gameChanged = currentGameIdRef.current !== null && 
@@ -137,13 +139,29 @@ export const GameProvider = ({ children, onError }) => {
               const phaseChanged = currentPhaseRef.current !== null && 
                                   currentPhaseRef.current !== newPhase;
               
+              // Detect new game by checking if called numbers reset
+              const previousLength = previousCalledNumbersRef.current.length;
+              const currentLength = calledNumbers.length;
+              const calledNumbersReset = previousLength > 0 && currentLength === 0;
+              
+              // Determine if this is a new game
+              const isNewGame = gameChanged || calledNumbersReset || 
+                              (phaseChanged && newPhase === 2 && 
+                               currentPhaseRef.current !== undefined);
+              
+              // Store current called numbers for next comparison
+              previousCalledNumbersRef.current = [...calledNumbers];
+              
               // If game or phase changed, clear ticket data
               if (gameChanged || phaseChanged) {
                 console.log(`Game ${gameChanged ? 'ID' : 'phase'} changed. Resetting ticket data.`);
                 
-                // If transitioning to booking phase (phase 2), store the timestamp
-                if (newPhase === 2) {
-                  localStorage.setItem('currentGameStartTime', Date.now().toString());
+                // If transitioning to booking phase (phase 2), mark as new game
+                if (phaseChanged && newPhase === 2) {
+                  console.log('Transitioning to booking phase, clearing booking status');
+                  
+                  // Clear booking phase timestamp to force recalculation
+                  localStorage.removeItem('bookingPhaseStartTime');
                 }
                 
                 // Make game state available to utilities
@@ -151,7 +169,9 @@ export const GameProvider = ({ children, onError }) => {
                   window.__GAME_STATE = {
                     gameId: newGameId,
                     phase: newPhase,
-                    changed: Date.now()
+                    calledNumbers: calledNumbers,
+                    changed: Date.now(),
+                    isNewGame: isNewGame
                   };
                 } catch (e) {
                   // Ignore any errors
@@ -167,6 +187,19 @@ export const GameProvider = ({ children, onError }) => {
                 // Set flags to wait for new data
                 dataReceived.current.tickets = false;
                 dataReceived.current.bookings = false;
+              } else {
+                // Update game state reference even if no phase change
+                try {
+                  window.__GAME_STATE = {
+                    gameId: newGameId,
+                    phase: newPhase,
+                    calledNumbers: calledNumbers,
+                    changed: Date.now(),
+                    isNewGame: false
+                  };
+                } catch (e) {
+                  // Ignore any errors
+                }
               }
               
               // Update refs with current values
@@ -178,7 +211,7 @@ export const GameProvider = ({ children, onError }) => {
                 error: null,
                 currentGame: gameData,
                 phase: newPhase,
-                calledNumbers: normalizeCalledNumbers(gameData.numberSystem?.calledNumbers),
+                calledNumbers: normalizeCalledNumbers(calledNumbers),
                 lastCalledNumber: gameData.numberSystem?.currentNumber,
               }));
               
@@ -248,11 +281,15 @@ export const GameProvider = ({ children, onError }) => {
             const rawTicketsData = snapshot.val();
             console.log("Tickets data received:", rawTicketsData ? "Yes" : "No");
             
-            // Get current gameId for verification
-            const currentGameId = currentGameIdRef.current;
+            // Prepare current game state for normalization
+            const currentGameState = {
+              gameId: currentGameIdRef.current,
+              phase: currentPhaseRef.current,
+              calledNumbers: previousCalledNumbersRef.current
+            };
             
-            // Normalize tickets with current game ID for proper verification
-            const normalizedTickets = normalizeTickets(rawTicketsData, currentGameId);
+            // Normalize tickets with current game state
+            const normalizedTickets = normalizeTickets(rawTicketsData, currentGameState);
             logTicketCount(normalizedTickets);
             dataReceived.current.tickets = true;
             
