@@ -142,29 +142,29 @@ const PRIZE_ANNOUNCEMENTS = {
     "Full House correct and gone!",
     "We have a houseful!",
     "Full House has been won!",
-    "Complete ticket claimed and completed!",
+    "Full House correct and gone!",
     "Full House is off the board!"
   ],
   secondFullHouse: [
     "Second Full House correct and gone!",
-    "Another houseful!",
+    "Second Full House correct and gone!",
     "Second Full House has been won!",
     "Another complete ticket claimed!",
     "Second Full House is off the board!"
   ],
   halfSheet: [
     "Half Sheet correct and gone!",
-    "Half the tickets complete!",
+    "We have a winner for half sheet!",
     "Half Sheet has been won!",
     "Half Sheet claimed and completed!",
     "Half Sheet is off the board!"
   ],
   fullSheet: [
     "Full Sheet correct and gone!",
-    "All tickets complete!",
+    "We have a winner for Full sheet !",
     "Full Sheet has been won!",
     "Full Sheet claimed and completed!",
-    "The whole Sheet is off the board!"
+    "The Full Sheet is off the board!"
   ]
 };
 
