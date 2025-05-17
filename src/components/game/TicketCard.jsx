@@ -34,7 +34,7 @@ const TicketCell = ({ number, isMarked }) => {
 };
 
 const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
-  const { isNumberCalled, phase, currentGame, players } = useGame();
+  const { isNumberCalled, phase, currentGame, players, getPlayerNameByTicket } = useGame();
   const [hostPhone, setHostPhone] = useState('');
   const [playerName, setPlayerName] = useState(null);
   const [ticketData, setTicketData] = useState(null);
@@ -42,11 +42,17 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
   // Only show remove button during playing phase when explicitly enabled
   const shouldShowRemoveButton = showRemoveButton && phase === 3;
   
-  // FIXED: Properly determine if a ticket is booked
+  // FIXED: Use the isBookingPhase
   const isBookingPhase = phase === 2;
-  const bookingPhaseStartTime = parseInt(localStorage.getItem('bookingPhaseStartTime') || '0');
-  const now = Date.now();
   
+  // DEBUG: Log the GameContext players function
+  useEffect(() => {
+    if (ticket && getPlayerNameByTicket) {
+      const contextPlayerName = getPlayerNameByTicket(ticket.id);
+      console.log(`GameContext lookup for ticket ${ticket.id}:`, contextPlayerName);
+    }
+  }, [ticket, getPlayerNameByTicket]);
+
   // Check for booking information in multiple sources
   const checkIsBooked = () => {
     if (!ticket) return false;
@@ -58,7 +64,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     
     // Check in current game bookings
     if (currentGame?.activeTickets?.bookings) {
-      // FIXED: Check if bookings is an array
+      // Check if bookings is an array
       const bookingsArray = Array.isArray(currentGame.activeTickets.bookings) 
         ? currentGame.activeTickets.bookings 
         : [];
@@ -142,148 +148,129 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     fetchHostPhone();
   }, [currentGame]);
 
-  // IMPROVED: Enhanced player name lookup with more thorough checks and proper extraction
+  // COMPLETELY REWRITTEN: Player name lookup - using the GameContext util function first
   useEffect(() => {
     if (!ticket || !ticket.id) {
       setPlayerName(null);
       return;
     }
     
-    // Check for player name in multiple sources
-    const findPlayerName = () => {
-      const ticketIdStr = ticket.id.toString();
-      
-      // NEW: First check ticket directly - this is likely the most reliable source
-      if (ticket) {
-        // Check booking details
-        if (ticket.bookingDetails?.playerName) {
-          return ticket.bookingDetails.playerName;
-        }
-        
-        // Check name directly on ticket
-        if (ticket.playerName) {
-          return ticket.playerName;
-        }
-        
-        // Check original booking details
-        if (ticket._originalBookingDetails?.playerName) {
-          return ticket._originalBookingDetails.playerName;
-        }
+    // First try using the utility function from GameContext if available
+    if (getPlayerNameByTicket) {
+      const contextPlayerName = getPlayerNameByTicket(ticket.id);
+      if (contextPlayerName) {
+        console.log(`Found name via context: ${contextPlayerName} for ticket ${ticket.id}`);
+        setPlayerName(contextPlayerName);
+        return;
       }
-      
-      // Check in bookings from currentGame
-      if (currentGame?.activeTickets?.bookings) {
-        // Ensure bookings is an array
-        const bookingsArray = Array.isArray(currentGame.activeTickets.bookings)
-          ? currentGame.activeTickets.bookings
-          : [];
-        
-        // Check for exact match by number
-        const booking = bookingsArray.find(
-          b => b && b.number && b.number.toString() === ticketIdStr
-        );
-        
-        if (booking) {
-          if (booking.playerName) {
-            return booking.playerName;
-          }
-          
-          // Try alternate name property paths
-          if (booking.name) {
-            return booking.name;
-          }
-          
-          if (booking.player?.name) {
-            return booking.player.name;
-          }
-        }
-      }
-      
-      // Check in players collection
-      if (currentGame?.players) {
-        for (const playerId in currentGame.players) {
-          const player = currentGame.players[playerId];
-          if (!player) continue;
-          
-          // Check if player has this ticket
-          const playerTickets = Array.isArray(player.tickets) ? player.tickets : [];
-          if (playerTickets.includes(ticketIdStr) || playerTickets.includes(parseInt(ticketIdStr))) {
-            return player.name || player.playerName;
-          }
-          
-          // Also check if player has bookings that match
-          const playerBookings = player.bookings || [];
-          if (playerBookings.includes(ticketIdStr) || playerBookings.includes(parseInt(ticketIdStr))) {
-            return player.name || player.playerName;
-          }
-        }
-      }
-      
-      // Check in local players prop
-      if (players) {
-        for (const playerId in players) {
-          const player = players[playerId];
-          if (!player) continue;
-          
-          // Check tickets array
-          const playerTickets = Array.isArray(player.tickets) ? player.tickets : [];
-          if (playerTickets.includes(ticketIdStr) || playerTickets.includes(parseInt(ticketIdStr))) {
-            return player.name || player.playerName;
-          }
-        }
-      }
-      
-      // Check directly in game data
-      if (currentGame?.activeTickets?.tickets) {
-        // Find this ticket in tickets collection
-        const activeTicket = currentGame.activeTickets.tickets.find(
-          t => t && t.id && t.id.toString() === ticketIdStr
-        );
-        
-        if (activeTicket) {
-          if (activeTicket.bookingDetails?.playerName) {
-            return activeTicket.bookingDetails.playerName;
-          }
-          
-          if (activeTicket.playerName) {
-            return activeTicket.playerName;
-          }
-        }
-      }
-      
-      return null;
-    };
+    }
     
-    const name = findPlayerName();
+    // DEBUG: Log the structure we're searching
+    console.log(`Looking for player name for ticket ${ticket.id}:`, {
+      ticketData: ticket,
+      bookingDetails: ticket.bookingDetails,
+      bookings: currentGame?.activeTickets?.bookings,
+      playersData: players,
+      gameData: currentGame
+    });
     
-    // Only set the name if we found one
-    if (name) {
-      setPlayerName(name);
-    } else {
-      // If no name found and ticket is booked, use the player's ID or a more friendly message
-      if (isBooked) {
-        // Look for player ID if available
-        if (currentGame?.players) {
-          for (const playerId in currentGame.players) {
-            const player = currentGame.players[playerId];
-            if (!player) continue;
-            
-            const playerTickets = Array.isArray(player.tickets) ? player.tickets : [];
-            if (playerTickets.includes(ticket.id.toString())) {
-              setPlayerName(`Player ${playerId.substring(0, 4)}`);
+    // Try direct lookup in ticket data
+    if (ticket.bookingDetails?.playerName) {
+      console.log(`Found name in bookingDetails: ${ticket.bookingDetails.playerName}`);
+      setPlayerName(ticket.bookingDetails.playerName);
+      return;
+    }
+    
+    // Try direct game context lookup using paths Jo and Nim mentioned
+    const ticketIdStr = ticket.id.toString();
+    
+    // Search through bookings data
+    if (currentGame?.activeTickets?.bookings) {
+      if (Array.isArray(currentGame.activeTickets.bookings)) {
+        for (const booking of currentGame.activeTickets.bookings) {
+          if (booking && booking.number === ticketIdStr) {
+            if (booking.playerName) {
+              console.log(`Found name in bookings: ${booking.playerName}`);
+              setPlayerName(booking.playerName);
               return;
             }
           }
         }
-        
-        // Otherwise just show "Booked" and let the UI handle showing/hiding
-        setPlayerName(null);
-      } else {
-        // If ticket is not booked, definitely no player name
-        setPlayerName(null);
+      } else if (typeof currentGame.activeTickets.bookings === 'object') {
+        // Maybe it's an object with ticket IDs as keys
+        const booking = currentGame.activeTickets.bookings[ticketIdStr];
+        if (booking && booking.playerName) {
+          console.log(`Found name in bookings object: ${booking.playerName}`);
+          setPlayerName(booking.playerName);
+          return;
+        }
       }
     }
-  }, [ticket, currentGame, players, isBooked]);
+    
+    // Check in Firebase/Game specific structure (this is likely the correct path)
+    if (currentGame?.players) {
+      Object.values(currentGame.players).forEach(player => {
+        if (!player || !player.tickets) return;
+        
+        // Check if this player has our ticket
+        const hasTicket = player.tickets.some(t => 
+          t.toString() === ticketIdStr || 
+          (typeof t === 'object' && t.id.toString() === ticketIdStr)
+        );
+        
+        if (hasTicket && player.name) {
+          console.log(`Found name in players: ${player.name}`);
+          setPlayerName(player.name);
+          return;
+        }
+      });
+    }
+    
+    // Last resort manual search for this specific host structure
+    // Directly access the context's original data
+    if (currentGame && typeof currentGame === 'object') {
+      // Try to recursively search for player name
+      const searchObj = (obj, depth = 0) => {
+        if (depth > 5) return null; // Prevent infinite recursion
+        
+        if (!obj || typeof obj !== 'object') return null;
+        
+        // Look for objects with both ticket ID and player name
+        for (const key in obj) {
+          const val = obj[key];
+          if (!val || typeof val !== 'object') continue;
+          
+          // Check for structures like "booking" objects with number and playerName
+          if (val.number === ticketIdStr && val.playerName) {
+            console.log(`Found name in deep search: ${val.playerName} at path ${key}`);
+            return val.playerName;
+          }
+          
+          // Look for player objects with tickets array containing our ID
+          if (val.tickets && Array.isArray(val.tickets) && 
+              val.tickets.includes(ticketIdStr) && val.name) {
+            console.log(`Found name in deep search: ${val.name} at path ${key}`);
+            return val.name;
+          }
+          
+          // Try going deeper
+          const result = searchObj(val, depth + 1);
+          if (result) return result;
+        }
+        
+        return null;
+      };
+      
+      const deepSearchName = searchObj(currentGame);
+      if (deepSearchName) {
+        setPlayerName(deepSearchName);
+        return;
+      }
+    }
+    
+    console.log(`No player name found for ticket ${ticket.id}`);
+    setPlayerName(isBooked ? "Booked Ticket" : null);
+  }, [ticket, currentGame, players, getPlayerNameByTicket, isBooked]);
 
   const ticketStats = useMemo(() => {
     if (!ticketData?.numbers) return { total: 0, matched: 0 };
@@ -438,7 +425,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
       {phase === 2 && isBooked && (
         <div className="w-full py-1 sm:py-2 bg-gray-100 text-center rounded-b-xl">
           <span className="text-sm text-gray-700">
-            {playerName ? `Booked by: ${playerName}` : 'Booked'}
+            {playerName || 'Booked'}
           </span>
         </div>
       )}
