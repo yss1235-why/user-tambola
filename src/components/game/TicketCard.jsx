@@ -58,7 +58,12 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     
     // Check in current game bookings
     if (currentGame?.activeTickets?.bookings) {
-      const booking = currentGame.activeTickets.bookings.find(
+      // FIXED: Check if bookings is an array
+      const bookingsArray = Array.isArray(currentGame.activeTickets.bookings) 
+        ? currentGame.activeTickets.bookings 
+        : [];
+        
+      const booking = bookingsArray.find(
         b => b && b.number && b.number.toString() === ticket.id.toString()
       );
       if (booking) return true;
@@ -137,7 +142,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     fetchHostPhone();
   }, [currentGame]);
 
-  // FIXED: Improved player name lookup
+  // FIXED: Improved player name lookup with array check
   useEffect(() => {
     if (!ticket || !ticket.id) {
       setPlayerName(null);
@@ -160,7 +165,12 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
       
       // 3. Check bookings in current game
       if (currentGame?.activeTickets?.bookings) {
-        const booking = currentGame.activeTickets.bookings.find(
+        // FIXED: Check if bookings is an array
+        const bookingsArray = Array.isArray(currentGame.activeTickets.bookings)
+          ? currentGame.activeTickets.bookings
+          : [];
+          
+        const booking = bookingsArray.find(
           b => b && b.number && b.number.toString() === ticketIdStr
         );
         
