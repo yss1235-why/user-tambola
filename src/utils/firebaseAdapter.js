@@ -159,7 +159,7 @@ export const normalizeTickets = (tickets, gameState = null) => {
   // Check if we're in booking phase
   const isBookingPhase = currentPhase === 2;
   
-  // Handle booking phase synchronization
+  // Handle booking phase synchronization for data operations
   if (isBookingPhase) {
     const now = Date.now();
     
@@ -181,11 +181,12 @@ export const normalizeTickets = (tickets, gameState = null) => {
     const syncWindow = 20000; // 20 seconds sync window
     const isRecentTransition = (now - bookingPhaseStartTime) < syncWindow;
     
-    // If we're in a sync window for a new game, ALL tickets should be available
-    const shouldResetAllTickets = isBookingPhase && (isRecentTransition || isNewGame);
+    // If we're in a sync window for a new game, tickets should be reset for data operations
+    // but we'll preserve original status and booking details for UI
+    const shouldResetDataStatus = isBookingPhase && (isRecentTransition || isNewGame);
     
-    if (shouldResetAllTickets) {
-      console.log('In booking phase sync window, resetting all tickets to available');
+    if (shouldResetDataStatus) {
+      console.log('In booking phase sync window, resetting tickets data status while preserving UI info');
       
       return tickets
         .filter(ticket => ticket !== null)
@@ -193,13 +194,17 @@ export const normalizeTickets = (tickets, gameState = null) => {
           // Clone to avoid mutations
           const normalizedTicket = { ...ticket };
           
-          // Store original status for debugging
+          // Store original status and booking details for UI usage
           normalizedTicket._originalStatus = normalizedTicket.status;
           normalizedTicket._originalBookingDetails = normalizedTicket.bookingDetails;
           
-          // Reset ALL tickets to available during sync window
+          // Reset status for data operations
           normalizedTicket.status = 'available';
-          normalizedTicket.bookingDetails = null;
+          
+          // Keep bookingDetails available for UI but mark as _preserved
+          if (normalizedTicket.bookingDetails) {
+            normalizedTicket._preserveBookingDetails = true;
+          }
           
           return normalizedTicket;
         })
