@@ -42,18 +42,49 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
   // Only show remove button during playing phase when explicitly enabled
   const shouldShowRemoveButton = showRemoveButton && phase === 3;
   
-  // CRITICAL FIX: Properly define isBooked variable
-  // In booking phase (phase 2), all tickets should initially appear as available
+  // FIXED: Properly determine if a ticket is booked
   const isBookingPhase = phase === 2;
   const bookingPhaseStartTime = parseInt(localStorage.getItem('bookingPhaseStartTime') || '0');
   const now = Date.now();
   
-  // Consider tickets available during a window after transitioning to booking phase
-  const isNewGame = (now - bookingPhaseStartTime < 60000) || // 1-minute window
-                   (currentGame?.numberSystem?.calledNumbers?.length === 0 && isBookingPhase);
-                   
-  // Force tickets to show as available during booking phase of a new game
-  const isBooked = (isBookingPhase && isNewGame) ? false : ticket.status === 'booked';
+  // Check for booking information in multiple sources
+  const checkIsBooked = () => {
+    if (!ticket) return false;
+    
+    // Check direct ticket status
+    if (ticket.status === 'booked' || ticket.bookingDetails) {
+      return true;
+    }
+    
+    // Check in current game bookings
+    if (currentGame?.activeTickets?.bookings) {
+      const booking = currentGame.activeTickets.bookings.find(
+        b => b && b.number && b.number.toString() === ticket.id.toString()
+      );
+      if (booking) return true;
+    }
+    
+    // Check in players data
+    if (players) {
+      for (const playerId in players) {
+        const player = players[playerId];
+        const playerTickets = player.tickets || [];
+        if (playerTickets.includes(ticket.id.toString())) {
+          return true;
+        }
+      }
+    }
+    
+    // If original status was stored, use that
+    if (ticket._originalStatus === 'booked' || ticket._originalBookingDetails) {
+      return true;
+    }
+    
+    return false;
+  };
+  
+  // FIXED: Always use real booking status
+  const isBooked = checkIsBooked();
 
   // Ensure we have the complete ticket data with numbers
   useEffect(() => {
@@ -106,41 +137,56 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     fetchHostPhone();
   }, [currentGame]);
 
-  // Find player name from the Players object
+  // FIXED: Improved player name lookup
   useEffect(() => {
-    if (!ticket || !ticket.id || (isBookingPhase && isNewGame)) {
+    if (!ticket || !ticket.id) {
       setPlayerName(null);
       return;
     }
     
-    // First check bookings if available
-    if (currentGame?.activeTickets?.bookings) {
-      const booking = currentGame.activeTickets.bookings.find(
-        b => b && b.number && b.number.toString() === ticket.id.toString()
-      );
+    // Check for player name in multiple sources
+    const findPlayerName = () => {
+      const ticketIdStr = ticket.id.toString();
       
-      if (booking && booking.playerName) {
-        setPlayerName(booking.playerName);
-        return;
+      // 1. Check ticket bookingDetails
+      if (ticket.bookingDetails?.playerName) {
+        return ticket.bookingDetails.playerName;
       }
-    }
-    
-    // Then check Players data
-    if (players) {
-      for (const playerId in players) {
-        const player = players[playerId];
-        const playerTickets = player.tickets || [];
+      
+      // 2. Check _originalBookingDetails (from adapter)
+      if (ticket._originalBookingDetails?.playerName) {
+        return ticket._originalBookingDetails.playerName;
+      }
+      
+      // 3. Check bookings in current game
+      if (currentGame?.activeTickets?.bookings) {
+        const booking = currentGame.activeTickets.bookings.find(
+          b => b && b.number && b.number.toString() === ticketIdStr
+        );
         
-        if (playerTickets.includes(ticket.id.toString())) {
-          setPlayerName(player.name);
-          return;
+        if (booking && booking.playerName) {
+          return booking.playerName;
         }
       }
-    }
+      
+      // 4. Check Players data
+      if (players) {
+        for (const playerId in players) {
+          const player = players[playerId];
+          const playerTickets = player.tickets || [];
+          
+          if (playerTickets.includes(ticketIdStr)) {
+            return player.name;
+          }
+        }
+      }
+      
+      return null;
+    };
     
-    // Default to null if no player found
-    setPlayerName(null);
-  }, [ticket, currentGame, players, isBookingPhase, isNewGame]);
+    const name = findPlayerName();
+    setPlayerName(name);
+  }, [ticket, currentGame, players]);
 
   const ticketStats = useMemo(() => {
     if (!ticketData?.numbers) return { total: 0, matched: 0 };
@@ -204,7 +250,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
                 </span>
               )}
             </div>
-            {playerName && !isNewGame && (
+            {playerName && (
               <span className="text-xs text-blue-100">
                 {playerName}
               </span>
