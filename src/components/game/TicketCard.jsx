@@ -142,7 +142,7 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     fetchHostPhone();
   }, [currentGame]);
 
-  // FIXED: Improved player name lookup with array check
+  // IMPROVED: Enhanced player name lookup with more thorough checks and proper extraction
   useEffect(() => {
     if (!ticket || !ticket.id) {
       setPlayerName(null);
@@ -153,40 +153,100 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     const findPlayerName = () => {
       const ticketIdStr = ticket.id.toString();
       
-      // 1. Check ticket bookingDetails
-      if (ticket.bookingDetails?.playerName) {
-        return ticket.bookingDetails.playerName;
+      // NEW: First check ticket directly - this is likely the most reliable source
+      if (ticket) {
+        // Check booking details
+        if (ticket.bookingDetails?.playerName) {
+          return ticket.bookingDetails.playerName;
+        }
+        
+        // Check name directly on ticket
+        if (ticket.playerName) {
+          return ticket.playerName;
+        }
+        
+        // Check original booking details
+        if (ticket._originalBookingDetails?.playerName) {
+          return ticket._originalBookingDetails.playerName;
+        }
       }
       
-      // 2. Check _originalBookingDetails (from adapter)
-      if (ticket._originalBookingDetails?.playerName) {
-        return ticket._originalBookingDetails.playerName;
-      }
-      
-      // 3. Check bookings in current game
+      // Check in bookings from currentGame
       if (currentGame?.activeTickets?.bookings) {
-        // FIXED: Check if bookings is an array
+        // Ensure bookings is an array
         const bookingsArray = Array.isArray(currentGame.activeTickets.bookings)
           ? currentGame.activeTickets.bookings
           : [];
-          
+        
+        // Check for exact match by number
         const booking = bookingsArray.find(
           b => b && b.number && b.number.toString() === ticketIdStr
         );
         
-        if (booking && booking.playerName) {
-          return booking.playerName;
+        if (booking) {
+          if (booking.playerName) {
+            return booking.playerName;
+          }
+          
+          // Try alternate name property paths
+          if (booking.name) {
+            return booking.name;
+          }
+          
+          if (booking.player?.name) {
+            return booking.player.name;
+          }
         }
       }
       
-      // 4. Check Players data
+      // Check in players collection
+      if (currentGame?.players) {
+        for (const playerId in currentGame.players) {
+          const player = currentGame.players[playerId];
+          if (!player) continue;
+          
+          // Check if player has this ticket
+          const playerTickets = Array.isArray(player.tickets) ? player.tickets : [];
+          if (playerTickets.includes(ticketIdStr) || playerTickets.includes(parseInt(ticketIdStr))) {
+            return player.name || player.playerName;
+          }
+          
+          // Also check if player has bookings that match
+          const playerBookings = player.bookings || [];
+          if (playerBookings.includes(ticketIdStr) || playerBookings.includes(parseInt(ticketIdStr))) {
+            return player.name || player.playerName;
+          }
+        }
+      }
+      
+      // Check in local players prop
       if (players) {
         for (const playerId in players) {
           const player = players[playerId];
-          const playerTickets = player.tickets || [];
+          if (!player) continue;
           
-          if (playerTickets.includes(ticketIdStr)) {
-            return player.name;
+          // Check tickets array
+          const playerTickets = Array.isArray(player.tickets) ? player.tickets : [];
+          if (playerTickets.includes(ticketIdStr) || playerTickets.includes(parseInt(ticketIdStr))) {
+            return player.name || player.playerName;
+          }
+        }
+      }
+      
+      // Check directly in game data
+      if (currentGame?.activeTickets?.tickets) {
+        // Find this ticket in tickets collection
+        const activeTicket = currentGame.activeTickets.tickets.find(
+          t => t && t.id && t.id.toString() === ticketIdStr
+        );
+        
+        if (activeTicket) {
+          if (activeTicket.bookingDetails?.playerName) {
+            return activeTicket.bookingDetails.playerName;
+          }
+          
+          if (activeTicket.playerName) {
+            return activeTicket.playerName;
           }
         }
       }
@@ -195,8 +255,35 @@ const TicketCard = ({ ticket, onRemove, showRemoveButton }) => {
     };
     
     const name = findPlayerName();
-    setPlayerName(name);
-  }, [ticket, currentGame, players]);
+    
+    // Only set the name if we found one
+    if (name) {
+      setPlayerName(name);
+    } else {
+      // If no name found and ticket is booked, use the player's ID or a more friendly message
+      if (isBooked) {
+        // Look for player ID if available
+        if (currentGame?.players) {
+          for (const playerId in currentGame.players) {
+            const player = currentGame.players[playerId];
+            if (!player) continue;
+            
+            const playerTickets = Array.isArray(player.tickets) ? player.tickets : [];
+            if (playerTickets.includes(ticket.id.toString())) {
+              setPlayerName(`Player ${playerId.substring(0, 4)}`);
+              return;
+            }
+          }
+        }
+        
+        // Otherwise just show "Booked" and let the UI handle showing/hiding
+        setPlayerName(null);
+      } else {
+        // If ticket is not booked, definitely no player name
+        setPlayerName(null);
+      }
+    }
+  }, [ticket, currentGame, players, isBooked]);
 
   const ticketStats = useMemo(() => {
     if (!ticketData?.numbers) return { total: 0, matched: 0 };
